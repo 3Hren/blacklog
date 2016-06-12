@@ -1,0 +1,12 @@
+[package]
+name = "blackhole"
+version = "0.1.0"
+authors = ["Evgeny Safronov <division494@gmail.com>"]
+
+[dependencies]
+# Pattern Layout grammar parsing.
+peg = "0.3"
+
+[features]
+# Benchmark internals.
+benchmark = []
