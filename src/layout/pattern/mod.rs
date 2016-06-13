@@ -220,20 +220,6 @@ mod tests {
         assert_eq!("[4]", from_utf8(&buf[..]).unwrap());
     }
 
-    #[cfg(feature="benchmark")]
-    #[bench]
-    fn bench_severity_with_message(b: &mut Bencher) {
-        let layout = PatternLayout::new("{severity:d}: {message}").unwrap();
-
-        let rec = Record::new(0, "value");
-        let mut buf = Vec::new();
-
-        b.iter(|| {
-            layout.format(&rec, &mut buf);
-            buf.clear();
-        });
-    }
-
     struct Mapping;
 
     impl SeverityMapping for Mapping {
@@ -265,5 +251,30 @@ mod tests {
         layout.format(&rec, &mut buf);
 
         assert_eq!("[2]", from_utf8(&buf[..]).unwrap());
+    }
+
+    #[test]
+    fn severity_with_message() {
+        let layout = PatternLayout::new("{severity:d}: {message}").unwrap();
+
+        let rec = Record::new(2, "value");
+        let mut buf = Vec::new();
+        layout.format(&rec, &mut buf);
+
+        assert_eq!("2: value", from_utf8(&buf[..]).unwrap());
+    }
+
+    #[cfg(feature="benchmark")]
+    #[bench]
+    fn bench_severity_with_message(b: &mut Bencher) {
+        let layout = PatternLayout::new("{severity:d}: {message}").unwrap();
+
+        let rec = Record::new(0, "value");
+        let mut buf = Vec::new();
+
+        b.iter(|| {
+            layout.format(&rec, &mut buf);
+            buf.clear();
+        });
     }
 }
