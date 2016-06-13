@@ -3,7 +3,7 @@ name = "blacklog"
 version = "0.1.0"
 authors = ["Evgeny Safronov <division494@gmail.com>"]
 
-description = "Fast attribute-aware asynchronous logger"
+description = "Fast attribute-aware asynchronous logger, port from https://github.com/3Hren/blackhole."
 
 repository = "https://github.com/3Hren/blacklog"
 
@@ -17,6 +17,8 @@ license = "MIT"
 peg = "0.3"
 # Reduces error enum creation boilerplate.
 quick-error = "^1.1"
+# Datetime formatting.
+chrono = "0.2"
 
 [features]
 # Compile unit-benchmarks.

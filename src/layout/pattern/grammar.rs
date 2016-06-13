@@ -42,6 +42,7 @@ format -> Token
             None => Token::Severity(align, width, SeverityType::String),
         }
     }
+    / "{" "timestamp" "}" { Token::Timestamp("%+".into()) }
     / "{" key:name "}" { Token::Placeholder(match_str[1..match_str.len() - 1].into(), key) }
 fill -> char
     = . { match_str.chars().next().unwrap() }
@@ -86,6 +87,7 @@ pub enum Token {
     Message,
     MessageSpec(Option<char>, Option<Align>, Option<usize>),
     Severity(Option<Align>, Option<usize>, SeverityType),
+    Timestamp(String), // Spec, Pattern, Type[dsl]
     Placeholder(String, Key),
 }
 
@@ -130,6 +132,13 @@ mod tests {
         let tokens = parse("{severity:d}").unwrap();
 
         assert_eq!(vec![Token::Severity(None, None, SeverityType::Num)], tokens);
+    }
+
+    #[test]
+    fn timestamp_ast() {
+        let tokens = parse("{timestamp}").unwrap();
+
+        assert_eq!(vec![Token::Timestamp("%+".into())], tokens);
     }
 
     #[test]
