@@ -6,3 +6,5 @@
 - [ ] Reset at runtime.
 - [ ] Configuration from YAML.
 - [ ] Integration with default singleton log crate.
+- [ ] ...
+- [ ] Stable Rust support.

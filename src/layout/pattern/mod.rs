@@ -7,7 +7,7 @@ use Severity;
 
 mod grammar;
 
-use self::grammar::{parse, Align, ParseError, Key, Token};
+use self::grammar::{parse, Align, ParseError, Token};
 
 fn padded(fill: &Option<char>, align: &Option<Align>, width: &Option<usize>, data: &[u8], wr: &mut Write) ->
     Result<(), ::std::io::Error>
@@ -101,12 +101,7 @@ impl<F: SeverityMapping> Layout for PatternLayout<F> {
                         _ => unreachable!(),
                     }
                 }
-                Token::Placeholder(ref _pattern, Key::Id(..)) => {
-                    unimplemented!();
-                }
-                Token::Placeholder(ref _pattern, Key::Name(ref _name)) => {
-                    unimplemented!();
-                }
+                _ => unimplemented!(),
             }
         }
     }
