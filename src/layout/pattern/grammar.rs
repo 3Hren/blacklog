@@ -11,8 +11,8 @@ pub use self::grammar::{expression, ParseError};
 // [ ] width := count
 // [ ] precision := count | '*'
 // [ ] type := identifier | ''
-// [ ] count := parameter | integer
-// [ ] parameter := integer '$'
+// [-] count := parameter | integer
+// [-] parameter := integer '$'
 
 const OPENED_BRACE: &'static str = "{";
 const CLOSED_BRACE: &'static str = "}";

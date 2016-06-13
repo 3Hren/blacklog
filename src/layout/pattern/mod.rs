@@ -9,6 +9,38 @@ mod grammar;
 
 use self::grammar::{parse, Align, ParseError, Key, Token};
 
+fn padded(fill: &Option<char>, align: &Option<Align>, width: &Option<usize>, data: &[u8], wr: &mut Write) ->
+    Result<(), ::std::io::Error>
+{
+    let fill = match *fill {
+        Some(fill) => fill,
+        None => ' ',
+    };
+
+    let diff = match *width {
+        Some(width) if width > data.len() => width - data.len(),
+        Some(..) | None => 0,
+    };
+
+    let (lpad, rpad) = match *align {
+        Some(Align::Left) | None => (0, diff),
+        Some(Align::Right) => (diff, 0),
+        Some(Align::Middle) => (diff / 2, diff - diff / 2),
+    };
+
+    for _ in 0..lpad {
+        wr.write(&[fill as u8])?;
+    }
+
+    wr.write_all(data)?;
+
+    for _ in 0..rpad {
+        wr.write(&[fill as u8])?;
+    }
+
+    Ok(())
+}
+
 pub type SeveritySpec = (Option<char>, Option<Align>, Option<usize>);
 
 pub trait SeverityMapping {
@@ -46,38 +78,6 @@ impl<F: SeverityMapping> PatternLayout<F> {
 
         Ok(layout)
     }
-}
-
-fn padded(fill: &Option<char>, align: &Option<Align>, width: &Option<usize>, data: &[u8], wr: &mut Write) ->
-    Result<(), ::std::io::Error>
-{
-    let fill = match *fill {
-        Some(fill) => fill,
-        None => ' ',
-    };
-
-    let diff = match *width {
-        Some(width) if width > data.len() => width - data.len(),
-        Some(..) | None => 0,
-    };
-
-    let (lpad, rpad) = match *align {
-        Some(Align::Left) | None => (0, diff),
-        Some(Align::Right) => (diff, 0),
-        Some(Align::Middle) => (diff / 2, diff - diff / 2),
-    };
-
-    for _ in 0..lpad {
-        wr.write(&[fill as u8])?;
-    }
-
-    wr.write_all(data)?;
-
-    for _ in 0..rpad {
-        wr.write(&[fill as u8])?;
-    }
-
-    Ok(())
 }
 
 impl<F: SeverityMapping> Layout for PatternLayout<F> {
