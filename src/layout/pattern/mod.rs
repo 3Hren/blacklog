@@ -77,8 +77,8 @@ fn padded(fill: char, align: &Option<Align>, width: &Option<usize>, data: &[u8],
 }
 
 impl<F: SeverityMapping> Layout for PatternLayout<F> {
-    // Errors: Io | KeyNotFound.
-    fn format(&mut self, rec: &Record, wr: &mut Write) {
+    // Errors: Io | AttributeNotFound.
+    fn format(&self, rec: &Record, wr: &mut Write) {
         for token in &self.tokens {
             match *token {
                 Token::Literal(ref literal) => {
@@ -123,7 +123,7 @@ mod tests {
 
     #[test]
     fn message() {
-        let mut layout = PatternLayout::new("[{message}]").unwrap();
+        let layout = PatternLayout::new("[{message}]").unwrap();
 
         let rec = Record::new(0, "value");
         let mut buf = Vec::new();
@@ -135,7 +135,7 @@ mod tests {
     #[cfg(feature="benchmark")]
     #[bench]
     fn bench_message(b: &mut Bencher) {
-        let mut layout = PatternLayout::new("message: {message}").unwrap();
+        let layout = PatternLayout::new("message: {message}").unwrap();
 
         let rec = Record::new(0, "value");
         let mut buf = Vec::new();
@@ -148,7 +148,7 @@ mod tests {
 
     #[test]
     fn message_with_spec() {
-        let mut layout = PatternLayout::new("[{message:<10}]").unwrap();
+        let layout = PatternLayout::new("[{message:<10}]").unwrap();
 
         let rec = Record::new(0, "value");
         let mut buf = Vec::new();
@@ -159,7 +159,7 @@ mod tests {
 
     #[test]
     fn message_with_width_less_than_length() {
-        let mut layout = PatternLayout::new("[{message:<0}]").unwrap();
+        let layout = PatternLayout::new("[{message:<0}]").unwrap();
 
         let rec = Record::new(0, "value");
         let mut buf = Vec::new();
@@ -171,7 +171,7 @@ mod tests {
     #[cfg(feature="benchmark")]
     #[bench]
     fn bench_message_with_spec(b: &mut Bencher) {
-        let mut layout = PatternLayout::new("message: {message:<10}").unwrap();
+        let layout = PatternLayout::new("message: {message:<10}").unwrap();
 
         let rec = Record::new(0, "value");
         let mut buf = Vec::new();
@@ -185,7 +185,7 @@ mod tests {
     #[test]
     fn severity() {
         // NOTE: No severity mapping provided, layout falls back to the numeric case.
-        let mut layout = PatternLayout::new("[{severity}]").unwrap();
+        let layout = PatternLayout::new("[{severity}]").unwrap();
 
         let rec = Record::new(0, "value");
         let mut buf = Vec::new();
@@ -196,7 +196,7 @@ mod tests {
 
     #[test]
     fn severity_num() {
-        let mut layout = PatternLayout::new("[{severity:d}]").unwrap();
+        let layout = PatternLayout::new("[{severity:d}]").unwrap();
 
         let rec = Record::new(4, "value");
         let mut buf = Vec::new();
@@ -208,7 +208,7 @@ mod tests {
     #[cfg(feature="benchmark")]
     #[bench]
     fn bench_severity_with_message(b: &mut Bencher) {
-        let mut layout = PatternLayout::new("{severity:d}: {message}").unwrap();
+        let layout = PatternLayout::new("{severity:d}: {message}").unwrap();
 
         let rec = Record::new(0, "value");
         let mut buf = Vec::new();
@@ -232,7 +232,7 @@ mod tests {
 
     #[test]
     fn severity_with_mapping() {
-        let mut layout = PatternLayout::with("[{severity}]", Mapping).unwrap();
+        let layout = PatternLayout::with("[{severity}]", Mapping).unwrap();
 
         let rec = Record::new(2, "value");
         let mut buf = Vec::new();
@@ -243,7 +243,7 @@ mod tests {
 
     #[test]
     fn severity_num_with_mapping() {
-        let mut layout = PatternLayout::with("[{severity:d}]", Mapping).unwrap();
+        let layout = PatternLayout::with("[{severity:d}]", Mapping).unwrap();
 
         let rec = Record::new(2, "value");
         let mut buf = Vec::new();
