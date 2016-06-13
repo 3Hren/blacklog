@@ -1,30 +1,47 @@
 use std::io::Write;
 
 use super::Layout;
-use super::super::Record;
+
+use Record;
+use Severity;
 
 mod grammar;
 
 use self::grammar::{parse, Align, ParseError, Key, Token};
 
-pub struct PatternLayout {
-    tokens: Vec<Token>,
-    sevmap: Box<Fn(isize, (char, Option<Align>, Option<usize>), &mut Write) -> Result<(), ::std::io::Error>>,
+pub type SeveritySpec = (char, Option<Align>, Option<usize>);
+
+pub trait SeverityMapping {
+    fn map(&self, severity: Severity, spec: SeveritySpec, wr: &mut Write) ->
+        Result<(), ::std::io::Error>;
 }
 
-impl PatternLayout {
-    pub fn new(pattern: &str) -> Result<PatternLayout, ParseError> {
-        PatternLayout::with(pattern, |severity, (fill, align, width), wr| -> Result<(), ::std::io::Error> {
-            padded(fill, &align, &width, format!("{}", severity).as_bytes(), wr)
-        })
-    }
+struct DefaultSeverityMapping;
 
-    fn with<F>(pattern: &str, sevmap: F) -> Result<PatternLayout, ParseError>
-        where F: Fn(isize, (char, Option<Align>, Option<usize>), &mut Write) -> Result<(), ::std::io::Error> + 'static
+impl SeverityMapping for DefaultSeverityMapping {
+    fn map(&self, severity: Severity, (fill, align, width): SeveritySpec, wr: &mut Write) ->
+        Result<(), ::std::io::Error>
     {
+        padded(fill, &align, &width, format!("{}", severity).as_bytes(), wr)
+    }
+}
+
+pub struct PatternLayout<F: SeverityMapping> {
+    tokens: Vec<Token>,
+    sevmap: F,
+}
+
+impl PatternLayout<DefaultSeverityMapping> {
+    pub fn new(pattern: &str) -> Result<PatternLayout<DefaultSeverityMapping>, ParseError> {
+        PatternLayout::with(pattern, DefaultSeverityMapping)
+    }
+}
+
+impl<F: SeverityMapping> PatternLayout<F> {
+    fn with(pattern: &str, sevmap: F) -> Result<PatternLayout<F>, ParseError> {
         let layout = PatternLayout {
             tokens: parse(pattern)?,
-            sevmap: box sevmap,
+            sevmap: sevmap,
         };
 
         Ok(layout)
@@ -59,7 +76,7 @@ fn padded(fill: char, align: &Option<Align>, width: &Option<usize>, data: &[u8],
     Ok(())
 }
 
-impl Layout for PatternLayout {
+impl<F: SeverityMapping> Layout for PatternLayout<F> {
     // Errors: Io | KeyNotFound.
     fn format(&mut self, rec: &Record, wr: &mut Write) {
         for token in &self.tokens {
@@ -76,7 +93,7 @@ impl Layout for PatternLayout {
                 Token::Severity(align, width, ty) => {
                     match ty {
                         'd' => padded(' ', &align, &width, format!("{}", rec.severity()).as_bytes(), wr).unwrap(),
-                        's' => (*self.sevmap)(rec.severity(), (' ', align, width), wr).unwrap(),
+                        's' => self.sevmap.map(rec.severity(), (' ', align, width), wr).unwrap(),
                         _ => unreachable!(),
                     }
                 }
@@ -93,14 +110,16 @@ impl Layout for PatternLayout {
 
 #[cfg(test)]
 mod tests {
+    use std::io::Write;
     use std::str::from_utf8;
 
     #[cfg(feature="benchmark")]
     use test::Bencher;
 
     use Record;
+    use Severity;
     use layout::Layout;
-    use layout::pattern::PatternLayout;
+    use layout::pattern::{PatternLayout, SeveritySpec, SeverityMapping};
 
     #[test]
     fn message() {
@@ -200,13 +219,20 @@ mod tests {
         });
     }
 
+    struct Mapping;
+
+    impl SeverityMapping for Mapping {
+        fn map(&self, severity: Severity, _spec: SeveritySpec, wr: &mut Write) ->
+            Result<(), ::std::io::Error>
+        {
+            assert_eq!(2, severity);
+            wr.write_all("DEBUG".as_bytes())
+        }
+    }
+
     #[test]
     fn severity_with_mapping() {
-        let mut layout = PatternLayout::with("[{severity}]", |severity, _spec, wr| {
-            assert_eq!(2, severity);
-
-            wr.write_all("DEBUG".as_bytes())
-        }).unwrap();
+        let mut layout = PatternLayout::with("[{severity}]", Mapping).unwrap();
 
         let rec = Record::new(2, "value");
         let mut buf = Vec::new();
@@ -217,11 +243,7 @@ mod tests {
 
     #[test]
     fn severity_num_with_mapping() {
-        let mut layout = PatternLayout::with("[{severity:d}]", |severity, _spec, wr| {
-            assert_eq!(2, severity);
-
-            wr.write_all("DEBUG".as_bytes())
-        }).unwrap();
+        let mut layout = PatternLayout::with("[{severity:d}]", Mapping).unwrap();
 
         let rec = Record::new(2, "value");
         let mut buf = Vec::new();

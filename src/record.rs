@@ -1,8 +1,10 @@
 use std::time::SystemTime;
 
+use Severity;
+
 #[derive(Debug)]
 pub struct Record<'a> {
-    severity: isize,
+    severity: Severity,
     timestamp: SystemTime,
     message: &'a str,
 }
@@ -16,7 +18,7 @@ impl<'a> Record<'a> {
         }
     }
 
-    pub fn severity(&self) -> isize {
+    pub fn severity(&self) -> Severity {
         self.severity
     }
 
