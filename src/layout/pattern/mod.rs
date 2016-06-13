@@ -77,8 +77,11 @@ impl Layout for PatternLayout {
                     padded(' ', &align, &width, rec.message().as_bytes(), wr).unwrap();
                 }
                 Token::Severity(align, width, ty) => {
-                    (*self.sevmap)(rec.severity(), (' ', align, width), wr).unwrap();
-                    // padded(' ', &align, &width, format!("{}", rec.severity()).as_bytes(), wr).unwrap();
+                    match ty {
+                        'd' => padded(' ', &align, &width, format!("{}", rec.severity()).as_bytes(), wr).unwrap(),
+                        's' => (*self.sevmap)(rec.severity(), (' ', align, width), wr).unwrap(),
+                        _ => unreachable!(),
+                    }
                 }
                 Token::Placeholder(ref pattern, Key::Id(..)) => {
                     unimplemented!();
@@ -213,5 +216,20 @@ mod tests {
         layout.format(&rec, &mut buf);
 
         assert_eq!("[DEBUG]", from_utf8(&buf[..]).unwrap());
+    }
+
+    #[test]
+    fn severity_num_with_mapping() {
+        let mut layout = PatternLayout::with("[{severity:d}]", |severity, _spec, wr| {
+            assert_eq!(2, severity);
+
+            wr.write_all("DEBUG".as_bytes())
+        }).unwrap();
+
+        let rec = Record::new(2, "value");
+        let mut buf = Vec::new();
+        layout.format(&rec, &mut buf);
+
+        assert_eq!("[2]", from_utf8(&buf[..]).unwrap());
     }
 }
