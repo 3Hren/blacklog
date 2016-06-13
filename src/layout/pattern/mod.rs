@@ -1,6 +1,6 @@
 use std::io::Write;
 
-use super::Layout;
+use super::{Error, Layout};
 
 use Record;
 use Severity;
@@ -82,28 +82,30 @@ impl<F: SeverityMapping> PatternLayout<F> {
 
 impl<F: SeverityMapping> Layout for PatternLayout<F> {
     // Errors: Io | AttributeNotFound.
-    fn format(&self, rec: &Record, wr: &mut Write) {
+    fn format(&self, rec: &Record, wr: &mut Write) -> Result<(), Error>{
         for token in &self.tokens {
             match *token {
                 Token::Literal(ref literal) => {
-                    wr.write_all(literal.as_bytes()).unwrap();
+                    wr.write_all(literal.as_bytes())?
                 }
                 Token::Message(None, None, None) => {
-                    wr.write_all(rec.message().as_bytes()).unwrap();
+                    wr.write_all(rec.message().as_bytes())?
                 }
                 Token::Message(fill, align, width) => {
-                    padded(&fill, &align, &width, rec.message().as_bytes(), wr).unwrap();
+                    padded(&fill, &align, &width, rec.message().as_bytes(), wr)?
                 }
                 Token::Severity(align, width, ty) => {
                     match ty {
-                        'd' => padded(&Some(' '), &align, &width, format!("{}", rec.severity()).as_bytes(), wr).unwrap(),
-                        's' => self.sevmap.map(rec.severity(), (Some(' '), align, width), wr).unwrap(),
+                        'd' => padded(&Some(' '), &align, &width, format!("{}", rec.severity()).as_bytes(), wr)?,
+                        's' => self.sevmap.map(rec.severity(), (Some(' '), align, width), wr)?,
                         _ => unreachable!(),
                     }
                 }
                 _ => unimplemented!(),
             }
         }
+
+        Ok(())
     }
 }
 
@@ -126,7 +128,7 @@ mod tests {
 
         let rec = Record::new(0, "value");
         let mut buf = Vec::new();
-        layout.format(&rec, &mut buf);
+        layout.format(&rec, &mut buf).unwrap();
 
         assert_eq!("[value]", from_utf8(&buf[..]).unwrap());
     }
@@ -137,10 +139,10 @@ mod tests {
         let layout = PatternLayout::new("message: {message}").unwrap();
 
         let rec = Record::new(0, "value");
-        let mut buf = Vec::new();
+        let mut buf = Vec::with_capacity(128);
 
         b.iter(|| {
-            layout.format(&rec, &mut buf);
+            layout.format(&rec, &mut buf).unwrap();
             buf.clear();
         });
     }
@@ -151,7 +153,7 @@ mod tests {
 
         let rec = Record::new(0, "value");
         let mut buf = Vec::new();
-        layout.format(&rec, &mut buf);
+        layout.format(&rec, &mut buf).unwrap();
 
         assert_eq!("[value     ]", from_utf8(&buf[..]).unwrap());
     }
@@ -162,7 +164,7 @@ mod tests {
 
         let rec = Record::new(0, "value");
         let mut buf = Vec::new();
-        layout.format(&rec, &mut buf);
+        layout.format(&rec, &mut buf).unwrap();
 
         assert_eq!("[value.....]", from_utf8(&buf[..]).unwrap());
     }
@@ -173,7 +175,7 @@ mod tests {
 
         let rec = Record::new(0, "value");
         let mut buf = Vec::new();
-        layout.format(&rec, &mut buf);
+        layout.format(&rec, &mut buf).unwrap();
 
         assert_eq!("[value]", from_utf8(&buf[..]).unwrap());
     }
@@ -184,10 +186,10 @@ mod tests {
         let layout = PatternLayout::new("message: {message:<10}").unwrap();
 
         let rec = Record::new(0, "value");
-        let mut buf = Vec::new();
+        let mut buf = Vec::with_capacity(128);
 
         b.iter(|| {
-            layout.format(&rec, &mut buf);
+            layout.format(&rec, &mut buf).unwrap();
             buf.clear();
         });
     }
@@ -199,7 +201,7 @@ mod tests {
 
         let rec = Record::new(0, "value");
         let mut buf = Vec::new();
-        layout.format(&rec, &mut buf);
+        layout.format(&rec, &mut buf).unwrap();
 
         assert_eq!("[0]", from_utf8(&buf[..]).unwrap());
     }
@@ -210,7 +212,7 @@ mod tests {
 
         let rec = Record::new(4, "value");
         let mut buf = Vec::new();
-        layout.format(&rec, &mut buf);
+        layout.format(&rec, &mut buf).unwrap();
 
         assert_eq!("[4]", from_utf8(&buf[..]).unwrap());
     }
@@ -232,7 +234,7 @@ mod tests {
 
         let rec = Record::new(2, "value");
         let mut buf = Vec::new();
-        layout.format(&rec, &mut buf);
+        layout.format(&rec, &mut buf).unwrap();
 
         assert_eq!("[DEBUG]", from_utf8(&buf[..]).unwrap());
     }
@@ -243,7 +245,7 @@ mod tests {
 
         let rec = Record::new(2, "value");
         let mut buf = Vec::new();
-        layout.format(&rec, &mut buf);
+        layout.format(&rec, &mut buf).unwrap();
 
         assert_eq!("[2]", from_utf8(&buf[..]).unwrap());
     }
@@ -254,7 +256,7 @@ mod tests {
 
         let rec = Record::new(2, "value");
         let mut buf = Vec::new();
-        layout.format(&rec, &mut buf);
+        layout.format(&rec, &mut buf).unwrap();
 
         assert_eq!("2: value", from_utf8(&buf[..]).unwrap());
     }
@@ -265,11 +267,21 @@ mod tests {
         let layout = PatternLayout::new("{severity:d}: {message}").unwrap();
 
         let rec = Record::new(0, "value");
-        let mut buf = Vec::new();
+        let mut buf = Vec::with_capacity(128);
 
         b.iter(|| {
-            layout.format(&rec, &mut buf);
+            layout.format(&rec, &mut buf).unwrap();
             buf.clear();
         });
+    }
+
+    #[test]
+    fn fail_format_small_buffer() {
+        let layout = PatternLayout::new("[{message}]").unwrap();
+
+        let rec = Record::new(0, "value");
+        let mut buf = [0u8];
+
+        assert!(layout.format(&rec, &mut &mut buf[..]).is_err());
     }
 }

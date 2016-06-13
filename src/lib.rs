@@ -7,6 +7,7 @@
 #![plugin(peg_syntax_ext)]
 
 #[cfg(feature="benchmark")] extern crate test;
+#[macro_use] extern crate quick_error;
 
 pub mod layout;
 mod record;

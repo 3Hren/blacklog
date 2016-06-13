@@ -1,12 +1,14 @@
 [package]
-name = "blackhole"
+name = "blacklog"
 version = "0.1.0"
 authors = ["Evgeny Safronov <division494@gmail.com>"]
 
 [dependencies]
 # Pattern Layout grammar parsing.
 peg = "0.3"
+# Reduces error enum creation boilerplate.
+quick-error = "^1.1"
 
 [features]
-# Benchmark internals.
+# Compile unit-benchmarks.
 benchmark = []
