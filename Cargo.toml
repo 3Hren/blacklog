@@ -3,6 +3,15 @@ name = "blacklog"
 version = "0.1.0"
 authors = ["Evgeny Safronov <division494@gmail.com>"]
 
+description = "Fast attribute-aware asynchronous logger"
+
+repository = "https://github.com/3Hren/blacklog"
+
+readme = "README.md"
+
+keywords = ["blackhole", "blacklog", "log", "logger", "logging"]
+license = "MIT"
+
 [dependencies]
 # Pattern Layout grammar parsing.
 peg = "0.3"
