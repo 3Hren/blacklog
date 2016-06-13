@@ -28,9 +28,13 @@ text -> Token
     / "}}" { Token::Literal(CLOSED_BRACE.into()) }
     / [^{}]+ { Token::Literal(match_str.into()) }
 format -> Token
-    = "{" "message" "}" { Token::Message(None, None, None) }
-    / "{" "message:" align:align? width:width? "}" { Token::Message(Some(' '), align, width) }
-    / "{" "message:" fill:fill? align:align? width:width? "}" { Token::Message(fill, align, width) }
+    = "{" "message" "}" { Token::Message }
+    / "{" "message:" align:align? width:width? "}" {
+        Token::MessageSpec(Some(' '), align, width)
+    }
+    / "{" "message:" fill:fill? align:align? width:width? "}" {
+        Token::MessageSpec(fill, align, width)
+    }
     / "{" "severity" "}" { Token::Severity(None, None, SeverityType::String) }
     / "{" "severity:" align:align? width:width? ty:ty? "}" {
         match ty {
@@ -79,7 +83,8 @@ pub enum SeverityType {
 #[derive(Debug, Clone, PartialEq)]
 pub enum Token {
     Literal(String),
-    Message(Option<char>, Option<Align>, Option<usize>),
+    Message,
+    MessageSpec(Option<char>, Option<Align>, Option<usize>),
     Severity(Option<Align>, Option<usize>, SeverityType),
     Placeholder(String, Key),
 }
@@ -103,14 +108,14 @@ mod tests {
     fn message_ast() {
         let tokens = parse("{message}").unwrap();
 
-        assert_eq!(vec![Token::Message(None, None, None)], tokens);
+        assert_eq!(vec![Token::Message], tokens);
     }
 
     #[test]
     fn message_spec_ast() {
         let tokens = parse("{message:.<10}").unwrap();
 
-        assert_eq!(vec![Token::Message(Some('.'), Some(Align::Left), Some(10))], tokens);
+        assert_eq!(vec![Token::MessageSpec(Some('.'), Some(Align::Left), Some(10))], tokens);
     }
 
     #[test]
