@@ -1,11 +1,11 @@
 #![feature(test)]
 
 extern crate test;
-extern crate blackhole;
+extern crate blacklog;
 
 use test::Bencher;
 
-use blackhole::Record;
+use blacklog::Record;
 
 #[bench]
 fn new(b: &mut Bencher) {
