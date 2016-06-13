@@ -1,5 +1,3 @@
-use std::io::Write;
-
 pub use self::grammar::{expression, ParseError};
 
 // TODO: Implement all functionality.
@@ -20,7 +18,7 @@ const OPENED_BRACE: &'static str = "{";
 const CLOSED_BRACE: &'static str = "}";
 
 peg! grammar(r#"
-use super::{Align, Key, Spec, Token, OPENED_BRACE, CLOSED_BRACE};
+use super::{Align, Key, Token, OPENED_BRACE, CLOSED_BRACE};
 
 #[pub]
 expression -> Vec<Token>
@@ -30,17 +28,24 @@ text -> Token
     / "}}" { Token::Literal(CLOSED_BRACE.into()) }
     / [^{}]+ { Token::Literal(match_str.into()) }
 format -> Token
-    = "{" "message" "}" { Token::Message(None) }
-    / "{" "message:" spec:spec? "}" { Token::Message(spec) }
+    = "{" "message" "}" { Token::Message(None, None) }
+    / "{" "message:" align:align? width:width? "}" { Token::Message(align, width) }
+    / "{" "severity" "}" { Token::Severity(None, None, 's') }
+    / "{" "severity:" align:align? width:width? ty:ty? "}" {
+        match ty {
+            Some(ty) => Token::Severity(align, width, ty),
+            None => Token::Severity(align, width, 's'),
+        }
+    }
     / "{" key:name "}" { Token::Placeholder(match_str[1..match_str.len() - 1].into(), key) }
-spec -> Spec
-    = align:align? width:width? { Spec { align: align, width: width } }
 align -> Align
     = "<" { Align::Left }
     / ">" { Align::Right }
     / "^" { Align::Middle }
 width -> usize
     = [0-9]+ { match_str.parse().unwrap() }
+ty -> char
+    = [sd] { match_str.chars().next().unwrap() }
 name -> Key
     = [0-9]+ { Key::Id(match_str.parse().expect("expect number")) }
     / [a-zA-Z][a-zA-Z0-9]* { Key::Name(match_str.into()) }
@@ -62,25 +67,10 @@ pub enum Align {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct Spec {
-    align: Option<Align>,
-    width: Option<usize>,
-}
-
-impl Spec {
-    pub fn align(&self) -> &Option<Align> {
-        &self.align
-    }
-
-    pub fn width(&self) -> &Option<usize> {
-        &self.width
-    }
-}
-
-#[derive(Debug, Clone, PartialEq)]
 pub enum Token {
     Literal(String),
-    Message(Option<Spec>),
+    Message(Option<Align>, Option<usize>),
+    Severity(Option<Align>, Option<usize>, char),
     Placeholder(String, Key),
 }
 
@@ -90,7 +80,7 @@ pub fn parse(pattern: &str) -> Result<Vec<Token>, ParseError> {
 
 #[cfg(test)]
 mod tests {
-    use super::{parse, Align, Key, Spec, Token};
+    use super::{parse, Align, Key, Token};
 
     #[test]
     fn literal_ast() {
@@ -103,18 +93,28 @@ mod tests {
     fn message_ast() {
         let tokens = parse("{message}").unwrap();
 
-        assert_eq!(vec![Token::Message(None)], tokens);
+        assert_eq!(vec![Token::Message(None, None)], tokens);
     }
 
     #[test]
     fn message_spec_ast() {
         let tokens = parse("{message:<10}").unwrap();
 
-        let spec = Spec {
-            align: Some(Align::Left),
-            width: Some(10),
-        };
-        assert_eq!(vec![Token::Message(Some(spec))], tokens);
+        assert_eq!(vec![Token::Message(Some(Align::Left), Some(10))], tokens);
+    }
+
+    #[test]
+    fn severity_ast() {
+        let tokens = parse("{severity}").unwrap();
+
+        assert_eq!(vec![Token::Severity(None, None, 's')], tokens);
+    }
+
+    #[test]
+    fn severity_with_ty_ast() {
+        let tokens = parse("{severity:d}").unwrap();
+
+        assert_eq!(vec![Token::Severity(None, None, 'd')], tokens);
     }
 
     #[test]

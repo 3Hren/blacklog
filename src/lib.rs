@@ -8,7 +8,7 @@
 
 #[cfg(feature="benchmark")] extern crate test;
 
-mod layout;
+pub mod layout;
 mod record;
 
 pub use self::record::Record;
