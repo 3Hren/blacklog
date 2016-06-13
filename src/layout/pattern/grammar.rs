@@ -28,8 +28,9 @@ text -> Token
     / "}}" { Token::Literal(CLOSED_BRACE.into()) }
     / [^{}]+ { Token::Literal(match_str.into()) }
 format -> Token
-    = "{" "message" "}" { Token::Message(None, None) }
-    / "{" "message:" align:align? width:width? "}" { Token::Message(align, width) }
+    = "{" "message" "}" { Token::Message(None, None, None) }
+    / "{" "message:" align:align? width:width? "}" { Token::Message(Some(' '), align, width) }
+    / "{" "message:" fill:fill? align:align? width:width? "}" { Token::Message(fill, align, width) }
     / "{" "severity" "}" { Token::Severity(None, None, 's') }
     / "{" "severity:" align:align? width:width? ty:ty? "}" {
         match ty {
@@ -38,6 +39,8 @@ format -> Token
         }
     }
     / "{" key:name "}" { Token::Placeholder(match_str[1..match_str.len() - 1].into(), key) }
+fill -> char
+    = . { match_str.chars().next().unwrap() }
 align -> Align
     = "<" { Align::Left }
     / ">" { Align::Right }
@@ -69,7 +72,7 @@ pub enum Align {
 #[derive(Debug, Clone, PartialEq)]
 pub enum Token {
     Literal(String),
-    Message(Option<Align>, Option<usize>),
+    Message(Option<char>, Option<Align>, Option<usize>),
     Severity(Option<Align>, Option<usize>, char),
     Placeholder(String, Key),
 }
@@ -93,14 +96,14 @@ mod tests {
     fn message_ast() {
         let tokens = parse("{message}").unwrap();
 
-        assert_eq!(vec![Token::Message(None, None)], tokens);
+        assert_eq!(vec![Token::Message(None, None, None)], tokens);
     }
 
     #[test]
     fn message_spec_ast() {
-        let tokens = parse("{message:<10}").unwrap();
+        let tokens = parse("{message:.<10}").unwrap();
 
-        assert_eq!(vec![Token::Message(Some(Align::Left), Some(10))], tokens);
+        assert_eq!(vec![Token::Message(Some('.'), Some(Align::Left), Some(10))], tokens);
     }
 
     #[test]

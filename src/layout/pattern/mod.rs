@@ -9,7 +9,7 @@ mod grammar;
 
 use self::grammar::{parse, Align, ParseError, Key, Token};
 
-pub type SeveritySpec = (char, Option<Align>, Option<usize>);
+pub type SeveritySpec = (Option<char>, Option<Align>, Option<usize>);
 
 pub trait SeverityMapping {
     fn map(&self, severity: Severity, spec: SeveritySpec, wr: &mut Write) ->
@@ -22,7 +22,7 @@ impl SeverityMapping for DefaultSeverityMapping {
     fn map(&self, severity: Severity, (fill, align, width): SeveritySpec, wr: &mut Write) ->
         Result<(), ::std::io::Error>
     {
-        padded(fill, &align, &width, format!("{}", severity).as_bytes(), wr)
+        padded(&fill, &align, &width, format!("{}", severity).as_bytes(), wr)
     }
 }
 
@@ -48,19 +48,23 @@ impl<F: SeverityMapping> PatternLayout<F> {
     }
 }
 
-fn padded(fill: char, align: &Option<Align>, width: &Option<usize>, data: &[u8], wr: &mut Write) ->
+fn padded(fill: &Option<char>, align: &Option<Align>, width: &Option<usize>, data: &[u8], wr: &mut Write) ->
     Result<(), ::std::io::Error>
 {
+    let fill = match *fill {
+        Some(fill) => fill,
+        None => ' ',
+    };
+
     let diff = match *width {
         Some(width) if width > data.len() => width - data.len(),
         Some(..) | None => 0,
     };
 
     let (lpad, rpad) = match *align {
-        Some(Align::Left) => (0, diff),
+        Some(Align::Left) | None => (0, diff),
         Some(Align::Right) => (diff, 0),
         Some(Align::Middle) => (diff / 2, diff - diff / 2),
-        None => (0, 0),
     };
 
     for _ in 0..lpad {
@@ -84,16 +88,16 @@ impl<F: SeverityMapping> Layout for PatternLayout<F> {
                 Token::Literal(ref literal) => {
                     wr.write_all(literal.as_bytes()).unwrap();
                 }
-                Token::Message(None, None) => {
+                Token::Message(None, None, None) => {
                     wr.write_all(rec.message().as_bytes()).unwrap();
                 }
-                Token::Message(align, width) => {
-                    padded(' ', &align, &width, rec.message().as_bytes(), wr).unwrap();
+                Token::Message(fill, align, width) => {
+                    padded(&fill, &align, &width, rec.message().as_bytes(), wr).unwrap();
                 }
                 Token::Severity(align, width, ty) => {
                     match ty {
-                        'd' => padded(' ', &align, &width, format!("{}", rec.severity()).as_bytes(), wr).unwrap(),
-                        's' => self.sevmap.map(rec.severity(), (' ', align, width), wr).unwrap(),
+                        'd' => padded(&Some(' '), &align, &width, format!("{}", rec.severity()).as_bytes(), wr).unwrap(),
+                        's' => self.sevmap.map(rec.severity(), (Some(' '), align, width), wr).unwrap(),
                         _ => unreachable!(),
                     }
                 }
@@ -155,6 +159,17 @@ mod tests {
         layout.format(&rec, &mut buf);
 
         assert_eq!("[value     ]", from_utf8(&buf[..]).unwrap());
+    }
+
+    #[test]
+    fn message_with_fill() {
+        let layout = PatternLayout::new("[{message:.<10}]").unwrap();
+
+        let rec = Record::new(0, "value");
+        let mut buf = Vec::new();
+        layout.format(&rec, &mut buf);
+
+        assert_eq!("[value.....]", from_utf8(&buf[..]).unwrap());
     }
 
     #[test]
