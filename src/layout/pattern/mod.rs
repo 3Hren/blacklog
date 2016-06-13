@@ -81,8 +81,7 @@ impl<F: SeverityMapping> PatternLayout<F> {
 }
 
 impl<F: SeverityMapping> Layout for PatternLayout<F> {
-    // Errors: Io | AttributeNotFound.
-    fn format(&self, rec: &Record, wr: &mut Write) -> Result<(), Error>{
+    fn format(&self, rec: &Record, wr: &mut Write) -> Result<(), Error> {
         for token in &self.tokens {
             match *token {
                 Token::Literal(ref literal) => {
