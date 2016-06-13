@@ -7,7 +7,7 @@ use Severity;
 
 mod grammar;
 
-use self::grammar::{parse, Align, ParseError, Token};
+use self::grammar::{parse, Align, ParseError, SeverityType, Token};
 
 fn padded(fill: &Option<char>, align: &Option<Align>, width: &Option<usize>, data: &[u8], wr: &mut Write) ->
     Result<(), ::std::io::Error>
@@ -95,9 +95,12 @@ impl<F: SeverityMapping> Layout for PatternLayout<F> {
                 }
                 Token::Severity(align, width, ty) => {
                     match ty {
-                        'd' => padded(&Some(' '), &align, &width, format!("{}", rec.severity()).as_bytes(), wr)?,
-                        's' => self.sevmap.map(rec.severity(), (Some(' '), align, width), wr)?,
-                        _ => unreachable!(),
+                        SeverityType::Num => {
+                            padded(&Some(' '), &align, &width, format!("{}", rec.severity()).as_bytes(), wr)?
+                        }
+                        SeverityType::String => {
+                            self.sevmap.map(rec.severity(), (Some(' '), align, width), wr)?
+                        }
                     }
                 }
                 _ => unimplemented!(),

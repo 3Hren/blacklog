@@ -18,7 +18,7 @@ const OPENED_BRACE: &'static str = "{";
 const CLOSED_BRACE: &'static str = "}";
 
 peg! grammar(r#"
-use super::{Align, Key, Token, OPENED_BRACE, CLOSED_BRACE};
+use super::{Align, Key, SeverityType, Token, OPENED_BRACE, CLOSED_BRACE};
 
 #[pub]
 expression -> Vec<Token>
@@ -31,11 +31,11 @@ format -> Token
     = "{" "message" "}" { Token::Message(None, None, None) }
     / "{" "message:" align:align? width:width? "}" { Token::Message(Some(' '), align, width) }
     / "{" "message:" fill:fill? align:align? width:width? "}" { Token::Message(fill, align, width) }
-    / "{" "severity" "}" { Token::Severity(None, None, 's') }
+    / "{" "severity" "}" { Token::Severity(None, None, SeverityType::String) }
     / "{" "severity:" align:align? width:width? ty:ty? "}" {
         match ty {
             Some(ty) => Token::Severity(align, width, ty),
-            None => Token::Severity(align, width, 's'),
+            None => Token::Severity(align, width, SeverityType::String),
         }
     }
     / "{" key:name "}" { Token::Placeholder(match_str[1..match_str.len() - 1].into(), key) }
@@ -47,8 +47,9 @@ align -> Align
     / "^" { Align::Middle }
 width -> usize
     = [0-9]+ { match_str.parse().unwrap() }
-ty -> char
-    = [sd] { match_str.chars().next().unwrap() }
+ty -> SeverityType
+    = "d" { SeverityType::Num }
+    / "s" { SeverityType::String }
 name -> Key
     = [0-9]+ { Key::Id(match_str.parse().expect("expect number")) }
     / [a-zA-Z][a-zA-Z0-9]* { Key::Name(match_str.into()) }
@@ -69,11 +70,17 @@ pub enum Align {
     Middle,
 }
 
+#[derive(Debug, Copy, Clone, PartialEq)]
+pub enum SeverityType {
+    Num,
+    String,
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub enum Token {
     Literal(String),
     Message(Option<char>, Option<Align>, Option<usize>),
-    Severity(Option<Align>, Option<usize>, char),
+    Severity(Option<Align>, Option<usize>, SeverityType),
     Placeholder(String, Key),
 }
 
@@ -83,7 +90,7 @@ pub fn parse(pattern: &str) -> Result<Vec<Token>, ParseError> {
 
 #[cfg(test)]
 mod tests {
-    use super::{parse, Align, Key, Token};
+    use super::{parse, Align, Key, SeverityType, Token};
 
     #[test]
     fn literal_ast() {
@@ -110,14 +117,14 @@ mod tests {
     fn severity_ast() {
         let tokens = parse("{severity}").unwrap();
 
-        assert_eq!(vec![Token::Severity(None, None, 's')], tokens);
+        assert_eq!(vec![Token::Severity(None, None, SeverityType::String)], tokens);
     }
 
     #[test]
     fn severity_with_ty_ast() {
         let tokens = parse("{severity:d}").unwrap();
 
-        assert_eq!(vec![Token::Severity(None, None, 'd')], tokens);
+        assert_eq!(vec![Token::Severity(None, None, SeverityType::Num)], tokens);
     }
 
     #[test]
