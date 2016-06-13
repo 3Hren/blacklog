@@ -7,18 +7,15 @@ mod grammar;
 
 use self::grammar::{parse, Align, ParseError, Key, Token};
 
-#[derive(Debug)]
-enum Error {}
-
-struct PatternLayout {
+pub struct PatternLayout {
     tokens: Vec<Token>,
     sevmap: Box<Fn(isize, (char, Option<Align>, Option<usize>), &mut Write) -> Result<(), ::std::io::Error>>,
 }
 
 impl PatternLayout {
-    fn new(pattern: &str) -> Result<PatternLayout, ParseError> {
+    pub fn new(pattern: &str) -> Result<PatternLayout, ParseError> {
         PatternLayout::with(pattern, |severity, (fill, align, width), wr| -> Result<(), ::std::io::Error> {
-            padded(' ', &align, &width, format!("{}", severity).as_bytes(), wr)
+            padded(fill, &align, &width, format!("{}", severity).as_bytes(), wr)
         })
     }
 
@@ -66,7 +63,7 @@ impl Layout for PatternLayout {
     // Errors: Io | KeyNotFound.
     fn format(&mut self, rec: &Record, wr: &mut Write) {
         for token in &self.tokens {
-            let data = match *token {
+            match *token {
                 Token::Literal(ref literal) => {
                     wr.write_all(literal.as_bytes()).unwrap();
                 }
@@ -83,13 +80,13 @@ impl Layout for PatternLayout {
                         _ => unreachable!(),
                     }
                 }
-                Token::Placeholder(ref pattern, Key::Id(..)) => {
+                Token::Placeholder(ref _pattern, Key::Id(..)) => {
                     unimplemented!();
                 }
-                Token::Placeholder(ref pattern, Key::Name(ref name)) => {
+                Token::Placeholder(ref _pattern, Key::Name(ref _name)) => {
                     unimplemented!();
                 }
-            };
+            }
         }
     }
 }
