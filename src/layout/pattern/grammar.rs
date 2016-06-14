@@ -30,16 +30,36 @@ text -> Token
 format -> Token
     = "{" "message" "}" { Token::Message }
     / "{" "message:" align:align? width:width? "}" {
-        Token::MessageSpec(Some(' '), align, width)
+        Token::MessageExt {
+            fill: ' ',
+            align: align.unwrap_or(Align::Left),
+            width: width.unwrap_or(0),
+        }
     }
-    / "{" "message:" fill:fill? align:align? width:width? "}" {
-        Token::MessageSpec(fill, align, width)
+    / "{" "message:" fill:fill align:align? width:width? "}" {
+        Token::MessageExt {
+            fill: fill,
+            align: align.unwrap_or(Align::Left),
+            width: width.unwrap_or(0),
+        }
     }
-    / "{" "severity" "}" { Token::Severity(None, None, SeverityType::String) }
+    / "{" "severity" "}" { Token::Severity { ty: SeverityType::String } }
+    / "{" "severity:" "s}" { Token::Severity { ty: SeverityType::String } }
+    / "{" "severity:" "d}" { Token::Severity { ty: SeverityType::Num } }
     / "{" "severity:" align:align? width:width? ty:ty? "}" {
-        match ty {
-            Some(ty) => Token::Severity(align, width, ty),
-            None => Token::Severity(align, width, SeverityType::String),
+        Token::SeverityExt {
+            fill: ' ',
+            align: align.unwrap_or(Align::Left),
+            width: width.unwrap_or(0),
+            ty: ty.unwrap_or(SeverityType::String),
+        }
+    }
+    / "{" "severity:" fill:fill align:align? width:width? ty:ty? "}" {
+        Token::SeverityExt {
+            fill: fill,
+            align: align.unwrap_or(Align::Left),
+            width: width.unwrap_or(0),
+            ty: ty.unwrap_or(SeverityType::String),
         }
     }
     / "{" "timestamp" "}" { Token::Timestamp("%+".into()) }
@@ -75,8 +95,6 @@ name -> Key
     / [a-zA-Z][a-zA-Z0-9]* { Key::Name(match_str.into()) }
 "#);
 
-// TODO: Format spec.
-
 #[derive(Debug, Clone, PartialEq)]
 pub enum Key {
     Id(usize),
@@ -98,10 +116,16 @@ pub enum SeverityType {
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Token {
+    /// Piece of pattern between placeholders.
     Literal(String),
+    /// Message placeholder without spec to avoid unnecessary instructions.
     Message,
-    MessageSpec(Option<char>, Option<Align>, Option<usize>),
-    Severity(Option<Align>, Option<usize>, SeverityType),
+    /// Message placeholder with spec.
+    MessageExt { fill: char, align: Align, width: usize },
+    /// Severity placeholder either numeric or string, but without spec.
+    Severity { ty: SeverityType },
+    ///
+    SeverityExt { fill: char, align: Align, width: usize, ty: SeverityType },
     Timestamp(String), // Spec, Pattern, Type[dsl]
     TimestampNum(Option<char>, Option<Align>, Option<usize>),
     Placeholder(String, Key),
@@ -116,70 +140,126 @@ mod tests {
     use super::{parse, Align, Key, SeverityType, Token};
 
     #[test]
-    fn literal_ast() {
+    fn literal() {
         let tokens = parse("hello").unwrap();
 
         assert_eq!(vec![Token::Literal("hello".into())], tokens);
     }
 
     #[test]
-    fn message_ast() {
+    fn message() {
         let tokens = parse("{message}").unwrap();
 
         assert_eq!(vec![Token::Message], tokens);
     }
 
     #[test]
-    fn message_spec_ast() {
+    fn message_spec() {
         let tokens = parse("{message:.<10}").unwrap();
 
-        assert_eq!(vec![Token::MessageSpec(Some('.'), Some(Align::Left), Some(10))], tokens);
+        assert_eq!(vec![Token::MessageExt { fill: '.', align: Align::Left, width: 10 }], tokens);
     }
 
     #[test]
-    fn severity_ast() {
+    fn severity() {
         let tokens = parse("{severity}").unwrap();
 
-        assert_eq!(vec![Token::Severity(None, None, SeverityType::String)], tokens);
+        assert_eq!(vec![Token::Severity { ty: SeverityType::String }], tokens);
     }
 
     #[test]
-    fn severity_with_ty_ast() {
+    fn severity_num() {
         let tokens = parse("{severity:d}").unwrap();
 
-        assert_eq!(vec![Token::Severity(None, None, SeverityType::Num)], tokens);
+        assert_eq!(vec![Token::Severity { ty: SeverityType::Num }], tokens);
     }
 
     #[test]
-    fn timestamp_ast() {
+    fn severity_ext() {
+        let tokens = parse("{severity:<10}").unwrap();
+
+        assert_eq!(vec![
+            Token::SeverityExt {
+                fill: ' ',
+                align: Align::Left,
+                width: 10,
+                ty: SeverityType::String
+            }
+        ], tokens);
+    }
+
+    #[test]
+    fn severity_ext_with_fill() {
+        let tokens = parse("{severity:.^16}").unwrap();
+
+        assert_eq!(vec![
+            Token::SeverityExt {
+                fill: '.',
+                align: Align::Middle,
+                width: 16,
+                ty: SeverityType::String
+            }
+        ], tokens);
+    }
+
+    #[test]
+    fn severity_ext_with_fill_num() {
+        let tokens = parse("{severity:.^16d}").unwrap();
+
+        assert_eq!(vec![
+            Token::SeverityExt {
+                fill: '.',
+                align: Align::Middle,
+                width: 16,
+                ty: SeverityType::Num
+            }
+        ], tokens);
+    }
+
+    #[test]
+    fn severity_ext_with_fill_string() {
+        let tokens = parse("{severity:.^16s}").unwrap();
+
+        assert_eq!(vec![
+            Token::SeverityExt {
+                fill: '.',
+                align: Align::Middle,
+                width: 16,
+                ty: SeverityType::String
+            }
+        ], tokens);
+    }
+
+    #[test]
+    fn timestamp() {
         let tokens = parse("{timestamp}").unwrap();
 
         assert_eq!(vec![Token::Timestamp("%+".into())], tokens);
     }
 
     #[test]
-    fn timestamp_num_ast() {
+    fn timestamp_num() {
         let tokens = parse("{timestamp:d}").unwrap();
 
         assert_eq!(vec![Token::TimestampNum(None, None, None)], tokens);
     }
 
     #[test]
-    fn timestamp_num_with_fill_ast() {
+    fn timestamp_num_with_fill() {
         let tokens = parse("{timestamp:.<d}").unwrap();
 
         assert_eq!(vec![Token::TimestampNum(Some('.'), Some(Align::Left), None)], tokens);
     }
 
     #[test]
-    fn timestamp_ext_ast() {
+    fn timestamp_ext() {
         let tokens = parse("{timestamp:{%Y-%m-%d}s}").unwrap();
 
         assert_eq!(vec![Token::Timestamp("%Y-%m-%d".into())], tokens);
     }
 
     #[test]
-    fn placeholder_ast() {
+    fn placeholder() {
         let tokens = parse("{hello}").unwrap();
 
         let expected = vec![Token::Placeholder("hello".into(), Key::Name("hello".into()))];

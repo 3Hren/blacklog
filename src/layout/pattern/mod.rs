@@ -9,23 +9,19 @@ mod grammar;
 
 use self::grammar::{parse, Align, ParseError, SeverityType, Token};
 
-fn padded(fill: &Option<char>, align: &Option<Align>, width: &Option<usize>, data: &[u8], wr: &mut Write) ->
+fn padded(fill: char, align: Align, width: usize, data: &[u8], wr: &mut Write) ->
     Result<(), ::std::io::Error>
 {
-    let fill = match *fill {
-        Some(fill) => fill,
-        None => ' ',
+    let diff = if width > data.len() {
+        width - data.len()
+    } else {
+        0
     };
 
-    let diff = match *width {
-        Some(width) if width > data.len() => width - data.len(),
-        Some(..) | None => 0,
-    };
-
-    let (lpad, rpad) = match *align {
-        Some(Align::Left) | None => (0, diff),
-        Some(Align::Right) => (diff, 0),
-        Some(Align::Middle) => (diff / 2, diff - diff / 2),
+    let (lpad, rpad) = match align {
+        Align::Left => (0, diff),
+        Align::Right => (diff, 0),
+        Align::Middle => (diff / 2, diff - diff / 2),
     };
 
     for _ in 0..lpad {
@@ -41,20 +37,19 @@ fn padded(fill: &Option<char>, align: &Option<Align>, width: &Option<usize>, dat
     Ok(())
 }
 
-pub type SeveritySpec = (Option<char>, Option<Align>, Option<usize>);
-
 pub trait SeverityMapping {
-    fn map(&self, severity: Severity, spec: SeveritySpec, wr: &mut Write) ->
+    fn map(&self, severity: Severity, fill: char, align: Align, width: usize, wr: &mut Write) ->
         Result<(), ::std::io::Error>;
 }
 
 struct DefaultSeverityMapping;
 
 impl SeverityMapping for DefaultSeverityMapping {
-    fn map(&self, severity: Severity, (fill, align, width): SeveritySpec, wr: &mut Write) ->
+    fn map(&self, severity: Severity, fill: char, align: Align, width: usize, wr: &mut Write) ->
         Result<(), ::std::io::Error>
     {
-        padded(&fill, &align, &width, format!("{}", severity).as_bytes(), wr)
+        // TODO: Try transmute.
+        padded(fill, align, width, format!("{}", severity).as_bytes(), wr)
     }
 }
 
@@ -84,28 +79,19 @@ impl<F: SeverityMapping> Layout for PatternLayout<F> {
     fn format(&self, rec: &Record, wr: &mut Write) -> Result<(), Error> {
         for token in &self.tokens {
             match *token {
-                Token::Literal(ref literal) => {
-                    wr.write_all(literal.as_bytes())?
+                Token::Literal(ref literal) =>
+                    wr.write_all(literal.as_bytes())?,
+                Token::Message =>
+                    wr.write_all(rec.message().as_bytes())?,
+                Token::MessageExt { fill, align, width } =>
+                    padded(fill, align, width, rec.message().as_bytes(), wr)?,
+                Token::Severity { ty: SeverityType::Num } => {
+                    wr.write_all(format!("{}", rec.severity()).as_bytes())?
                 }
-                Token::Message => {
-                    wr.write_all(rec.message().as_bytes())?
-                }
-                Token::MessageSpec(fill, align, width) => {
-                    padded(&fill, &align, &width, rec.message().as_bytes(), wr)?
-                }
-                Token::Severity(align, width, ty) => {
-                    match ty {
-                        SeverityType::Num => {
-                            padded(&Some(' '), &align, &width, format!("{}", rec.severity()).as_bytes(), wr)?
-                        }
-                        SeverityType::String => {
-                            self.sevmap.map(rec.severity(), (Some(' '), align, width), wr)?
-                        }
-                    }
-                }
-                Token::Timestamp(ref pattern) => {
-                    wr.write_all(format!("{}", rec.timestamp().format(&pattern)).as_bytes())?
-                }
+                Token::Severity { ty: SeverityType::String } =>
+                    self.sevmap.map(rec.severity(), ' ', Align::Left, 0, wr)?,
+                Token::Timestamp(ref pattern) =>
+                    wr.write_all(format!("{}", rec.timestamp().format(&pattern)).as_bytes())?,
                 _ => unimplemented!(),
             }
         }
@@ -125,7 +111,8 @@ mod tests {
     use Record;
     use Severity;
     use layout::Layout;
-    use layout::pattern::{PatternLayout, SeveritySpec, SeverityMapping};
+    use layout::pattern::{PatternLayout, SeverityMapping};
+    use layout::pattern::grammar::Align;
 
     #[test]
     fn message() {
@@ -225,9 +212,12 @@ mod tests {
     struct Mapping;
 
     impl SeverityMapping for Mapping {
-        fn map(&self, severity: Severity, _spec: SeveritySpec, wr: &mut Write) ->
+        fn map(&self, severity: Severity, fill: char, align: Align, width: usize, wr: &mut Write) ->
             Result<(), ::std::io::Error>
         {
+            assert_eq!(' ', fill);
+            assert_eq!(Align::Left, align);
+            assert_eq!(0, width);
             assert_eq!(2, severity);
             wr.write_all("DEBUG".as_bytes())
         }
