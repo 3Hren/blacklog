@@ -49,6 +49,9 @@ format -> Token
     / "{" "timestamp:" fill:fill? align:align? width:width? "d}" {
         Token::TimestampNum(fill, align, width)
     }
+    / "{" "timestamp:" strftime:strftime ty:[sl]? "}" {
+        Token::Timestamp(strftime)
+    }
     / "{" key:name "}" { Token::Placeholder(match_str[1..match_str.len() - 1].into(), key) }
 fill -> char
     = . { match_str.chars().next().unwrap() }
@@ -61,6 +64,12 @@ width -> usize
 ty -> SeverityType
     = "d" { SeverityType::Num }
     / "s" { SeverityType::String }
+strftime -> String
+    = "{" schar* "}" { match_str[1..match_str.len() - 1].into() }
+schar -> char
+    = "{{" { OPENED_BRACE.chars().next().unwrap() }
+    / "}}" { CLOSED_BRACE.chars().next().unwrap() }
+    / [^{}] { match_str.chars().next().unwrap() }
 name -> Key
     = [0-9]+ { Key::Id(match_str.parse().expect("expect number")) }
     / [a-zA-Z][a-zA-Z0-9]* { Key::Name(match_str.into()) }
@@ -162,12 +171,12 @@ mod tests {
         assert_eq!(vec![Token::TimestampNum(Some('.'), Some(Align::Left), None)], tokens);
     }
 
-    // #[test]
-    // fn timestamp_ext_ast() {
-    //     let tokens = parse("{timestamp:{%Y-%m-%d}s}").unwrap();
-    //
-    //     assert_eq!(vec![Token::Timestamp("%Y-%m-%d".into())], tokens);
-    // }
+    #[test]
+    fn timestamp_ext_ast() {
+        let tokens = parse("{timestamp:{%Y-%m-%d}s}").unwrap();
+
+        assert_eq!(vec![Token::Timestamp("%Y-%m-%d".into())], tokens);
+    }
 
     #[test]
     fn placeholder_ast() {
