@@ -43,6 +43,12 @@ format -> Token
         }
     }
     / "{" "timestamp" "}" { Token::Timestamp("%+".into()) }
+    / "{" "timestamp:" align:align? width:width? "d}" {
+        Token::TimestampNum(None, align, width)
+    }
+    / "{" "timestamp:" fill:fill? align:align? width:width? "d}" {
+        Token::TimestampNum(fill, align, width)
+    }
     / "{" key:name "}" { Token::Placeholder(match_str[1..match_str.len() - 1].into(), key) }
 fill -> char
     = . { match_str.chars().next().unwrap() }
@@ -88,6 +94,7 @@ pub enum Token {
     MessageSpec(Option<char>, Option<Align>, Option<usize>),
     Severity(Option<Align>, Option<usize>, SeverityType),
     Timestamp(String), // Spec, Pattern, Type[dsl]
+    TimestampNum(Option<char>, Option<Align>, Option<usize>),
     Placeholder(String, Key),
 }
 
@@ -140,6 +147,27 @@ mod tests {
 
         assert_eq!(vec![Token::Timestamp("%+".into())], tokens);
     }
+
+    #[test]
+    fn timestamp_num_ast() {
+        let tokens = parse("{timestamp:d}").unwrap();
+
+        assert_eq!(vec![Token::TimestampNum(None, None, None)], tokens);
+    }
+
+    #[test]
+    fn timestamp_num_with_fill_ast() {
+        let tokens = parse("{timestamp:.<d}").unwrap();
+
+        assert_eq!(vec![Token::TimestampNum(Some('.'), Some(Align::Left), None)], tokens);
+    }
+
+    // #[test]
+    // fn timestamp_ext_ast() {
+    //     let tokens = parse("{timestamp:{%Y-%m-%d}s}").unwrap();
+    //
+    //     assert_eq!(vec![Token::Timestamp("%Y-%m-%d".into())], tokens);
+    // }
 
     #[test]
     fn placeholder_ast() {
