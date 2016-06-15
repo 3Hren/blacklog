@@ -85,13 +85,12 @@ impl<F: SeverityMapping> Layout for PatternLayout<F> {
                     wr.write_all(rec.message().as_bytes())?,
                 Token::MessageExt { fill, align, width } =>
                     padded(fill, align, width, rec.message().as_bytes(), wr)?,
-                Token::Severity { ty: SeverityType::Num } => {
-                    wr.write_all(format!("{}", rec.severity()).as_bytes())?
-                }
+                Token::Severity { ty: SeverityType::Num } =>
+                    wr.write_all(format!("{}", rec.severity()).as_bytes())?,
                 Token::Severity { ty: SeverityType::String } =>
                     self.sevmap.map(rec.severity(), ' ', Align::Left, 0, wr)?,
-                Token::Timestamp(ref pattern) =>
-                    wr.write_all(format!("{}", rec.timestamp().format(&pattern)).as_bytes())?,
+                // Token::Timestamp(ref pattern) =>
+                //     wr.write_all(format!("{}", rec.timestamp().format(&pattern)).as_bytes())?,
                 _ => unimplemented!(),
             }
         }
@@ -280,29 +279,29 @@ mod tests {
         assert!(layout.format(&rec, &mut &mut buf[..]).is_err());
     }
 
-    #[test]
-    fn timestamp() {
-        // NOTE: By default %+ pattern is used.
-        let layout = PatternLayout::new("{timestamp}").unwrap();
-
-        let rec = Record::new(0, "value").activate();
-        let mut buf = Vec::new();
-        layout.format(&rec, &mut buf).unwrap();
-
-        assert_eq!(format!("{}", rec.timestamp().format("%+")), from_utf8(&buf[..]).unwrap());
-    }
-
-    #[cfg(feature="benchmark")]
-    #[bench]
-    fn bench_timestamp(b: &mut Bencher) {
-        let layout = PatternLayout::new("{timestamp}").unwrap();
-
-        let rec = Record::new(0, "value").activate();
-        let mut buf = Vec::with_capacity(128);
-
-        b.iter(|| {
-            layout.format(&rec, &mut buf).unwrap();
-            buf.clear();
-        });
-    }
+    // #[test]
+    // fn timestamp() {
+    //     // NOTE: By default %+ pattern is used.
+    //     let layout = PatternLayout::new("{timestamp}").unwrap();
+    //
+    //     let rec = Record::new(0, "value").activate();
+    //     let mut buf = Vec::new();
+    //     layout.format(&rec, &mut buf).unwrap();
+    //
+    //     assert_eq!(format!("{}", rec.timestamp().format("%+")), from_utf8(&buf[..]).unwrap());
+    // }
+    //
+    // #[cfg(feature="benchmark")]
+    // #[bench]
+    // fn bench_timestamp(b: &mut Bencher) {
+    //     let layout = PatternLayout::new("{timestamp}").unwrap();
+    //
+    //     let rec = Record::new(0, "value").activate();
+    //     let mut buf = Vec::with_capacity(128);
+    //
+    //     b.iter(|| {
+    //         layout.format(&rec, &mut buf).unwrap();
+    //         buf.clear();
+    //     });
+    // }
 }

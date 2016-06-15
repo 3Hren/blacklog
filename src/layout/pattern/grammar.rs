@@ -18,7 +18,7 @@ const OPENED_BRACE: &'static str = "{";
 const CLOSED_BRACE: &'static str = "}";
 
 peg! grammar(r#"
-use super::{Align, Key, SeverityType, Token, OPENED_BRACE, CLOSED_BRACE};
+use super::{Align, Key, SeverityType, TimestampType, Token, OPENED_BRACE, CLOSED_BRACE};
 
 #[pub]
 expression -> Vec<Token>
@@ -29,16 +29,9 @@ text -> Token
     / [^{}]+ { Token::Literal(match_str.into()) }
 format -> Token
     = "{" "message" "}" { Token::Message }
-    / "{" "message:" align:align? width:width? "}" {
+    / "{" "message:" fill:fill? align:align? width:width? "}" {
         Token::MessageExt {
-            fill: ' ',
-            align: align.unwrap_or(Align::Left),
-            width: width.unwrap_or(0),
-        }
-    }
-    / "{" "message:" fill:fill align:align? width:width? "}" {
-        Token::MessageExt {
-            fill: fill,
+            fill: fill.unwrap_or(' '),
             align: align.unwrap_or(Align::Left),
             width: width.unwrap_or(0),
         }
@@ -46,47 +39,52 @@ format -> Token
     / "{" "severity" "}" { Token::Severity { ty: SeverityType::String } }
     / "{" "severity:" "s}" { Token::Severity { ty: SeverityType::String } }
     / "{" "severity:" "d}" { Token::Severity { ty: SeverityType::Num } }
-    / "{" "severity:" align:align? width:width? ty:ty? "}" {
+    / "{" "severity:" fill:fill? align:align? width:width? ty:sty? "}" {
         Token::SeverityExt {
-            fill: ' ',
+            fill: fill.unwrap_or(' '),
             align: align.unwrap_or(Align::Left),
             width: width.unwrap_or(0),
             ty: ty.unwrap_or(SeverityType::String),
         }
     }
-    / "{" "severity:" fill:fill align:align? width:width? ty:ty? "}" {
-        Token::SeverityExt {
-            fill: fill,
-            align: align.unwrap_or(Align::Left),
-            width: width.unwrap_or(0),
-            ty: ty.unwrap_or(SeverityType::String),
-        }
-    }
-    / "{" "timestamp" "}" { Token::Timestamp("%+".into()) }
-    / "{" "timestamp:" align:align? width:width? "d}" {
-        Token::TimestampNum(None, align, width)
-    }
+    / "{" "timestamp" "}" { Token::Timestamp { ty: TimestampType::Utc("%+".into()) } }
+    / "{" "timestamp:" "d}" { Token::Timestamp { ty: TimestampType::Num } }
     / "{" "timestamp:" fill:fill? align:align? width:width? "d}" {
-        Token::TimestampNum(fill, align, width)
+        Token::TimestampExt {
+            fill: fill.unwrap_or(' '),
+            align: align.unwrap_or(Align::Left),
+            width: width.unwrap_or(0),
+            ty: TimestampType::Num,
+        }
     }
-    / "{" "timestamp:" strftime:strftime ty:[sl]? "}" {
-        Token::Timestamp(strftime)
+    / "{" "timestamp:" pattern:strftime? ty:tty? "}" {
+        match ty {
+            Some('s') | None =>
+                Token::Timestamp { ty: TimestampType::Utc(pattern.unwrap_or("%+".into())) },
+            Some('l') =>
+                Token::Timestamp { ty: TimestampType::Local(pattern.unwrap_or("%+".into())) },
+            Some(..) =>
+                unreachable!(),
+        }
     }
+    // / "{" "timestamp:" pattern:strftime? fill:fill? align:align? width:width? ty:[sl]? "}" {}
     / "{" key:name "}" { Token::Placeholder(match_str[1..match_str.len() - 1].into(), key) }
 fill -> char
-    = . { match_str.chars().next().unwrap() }
+    = . &align { match_str.chars().next().unwrap() }
 align -> Align
     = "<" { Align::Left }
     / ">" { Align::Right }
     / "^" { Align::Middle }
 width -> usize
     = [0-9]+ { match_str.parse().unwrap() }
-ty -> SeverityType
+sty -> SeverityType
     = "d" { SeverityType::Num }
     / "s" { SeverityType::String }
+tty -> char
+    = [sl] { match_str.chars().next().unwrap() }
 strftime -> String
-    = "{" schar* "}" { match_str[1..match_str.len() - 1].into() }
-schar -> char
+    = "{" tchar:tchar* "}" { tchar.into_iter().collect() }
+tchar -> char
     = "{{" { OPENED_BRACE.chars().next().unwrap() }
     / "}}" { CLOSED_BRACE.chars().next().unwrap() }
     / [^{}] { match_str.chars().next().unwrap() }
@@ -115,6 +113,13 @@ pub enum SeverityType {
 }
 
 #[derive(Debug, Clone, PartialEq)]
+pub enum TimestampType {
+    Num,
+    Utc(String),
+    Local(String),
+}
+
+#[derive(Debug, Clone, PartialEq)]
 pub enum Token {
     /// Piece of pattern between placeholders.
     Literal(String),
@@ -124,10 +129,12 @@ pub enum Token {
     MessageExt { fill: char, align: Align, width: usize },
     /// Severity placeholder either numeric or string, but without spec.
     Severity { ty: SeverityType },
-    ///
+    /// Severity placeholder either numeric or string with spec.
     SeverityExt { fill: char, align: Align, width: usize, ty: SeverityType },
-    Timestamp(String), // Spec, Pattern, Type[dsl]
-    TimestampNum(Option<char>, Option<Align>, Option<usize>),
+    ///
+    Timestamp { ty: TimestampType },
+    ///
+    TimestampExt { fill: char, align: Align, width: usize, ty: TimestampType },
     Placeholder(String, Key),
 }
 
@@ -137,7 +144,7 @@ pub fn parse(pattern: &str) -> Result<Vec<Token>, ParseError> {
 
 #[cfg(test)]
 mod tests {
-    use super::{parse, Align, Key, SeverityType, Token};
+    use super::{parse, Align, Key, SeverityType, TimestampType, Token};
 
     #[test]
     fn literal() {
@@ -163,6 +170,13 @@ mod tests {
     #[test]
     fn severity() {
         let tokens = parse("{severity}").unwrap();
+
+        assert_eq!(vec![Token::Severity { ty: SeverityType::String }], tokens);
+    }
+
+    #[test]
+    fn severity_string() {
+        let tokens = parse("{severity:s}").unwrap();
 
         assert_eq!(vec![Token::Severity { ty: SeverityType::String }], tokens);
     }
@@ -234,28 +248,92 @@ mod tests {
     fn timestamp() {
         let tokens = parse("{timestamp}").unwrap();
 
-        assert_eq!(vec![Token::Timestamp("%+".into())], tokens);
+        assert_eq!(vec![Token::Timestamp { ty: TimestampType::Utc("%+".into()) }], tokens);
     }
 
     #[test]
     fn timestamp_num() {
         let tokens = parse("{timestamp:d}").unwrap();
 
-        assert_eq!(vec![Token::TimestampNum(None, None, None)], tokens);
+        assert_eq!(vec![Token::Timestamp { ty: TimestampType::Num }], tokens);
     }
 
     #[test]
-    fn timestamp_num_with_fill() {
+    fn timestamp_utc() {
+        let tokens = parse("{timestamp:s}").unwrap();
+
+        assert_eq!(vec![Token::Timestamp { ty: TimestampType::Utc("%+".into()) }], tokens);
+    }
+
+    #[test]
+    fn timestamp_local() {
+        let tokens = parse("{timestamp:l}").unwrap();
+
+        assert_eq!(vec![Token::Timestamp { ty: TimestampType::Local("%+".into()) }], tokens);
+    }
+
+    #[test]
+    fn timestamp_ext_num() {
+        let tokens = parse("{timestamp:^20d}").unwrap();
+
+        assert_eq!(vec![
+            Token::TimestampExt {
+                fill: ' ',
+                align: Align::Middle,
+                width: 20,
+                ty: TimestampType::Num,
+            }
+        ], tokens);
+    }
+
+    #[test]
+    fn timestamp_ext_num_with_fill() {
         let tokens = parse("{timestamp:.<d}").unwrap();
 
-        assert_eq!(vec![Token::TimestampNum(Some('.'), Some(Align::Left), None)], tokens);
+        assert_eq!(vec![
+            Token::TimestampExt {
+                fill: '.',
+                align: Align::Left,
+                width: 0,
+                ty: TimestampType::Num,
+            }
+        ], tokens);
     }
 
     #[test]
-    fn timestamp_ext() {
+    fn timestamp_with_pattern_utc() {
         let tokens = parse("{timestamp:{%Y-%m-%d}s}").unwrap();
 
-        assert_eq!(vec![Token::Timestamp("%Y-%m-%d".into())], tokens);
+        assert_eq!(vec![Token::Timestamp { ty: TimestampType::Utc("%Y-%m-%d".into()) }], tokens);
+    }
+
+    #[test]
+    fn timestamp_with_pattern_local() {
+        let tokens = parse("{timestamp:{%Y-%m-%d}l}").unwrap();
+
+        assert_eq!(vec![Token::Timestamp { ty: TimestampType::Local("%Y-%m-%d".into()) }], tokens);
+    }
+
+    #[test]
+    fn timestamp_with_pattern_utc_and_braces() {
+        let tokens = parse("{timestamp:{%Y-%m-%d {{T}} %H:%M:%S.%.6f}s}").unwrap();
+
+        assert_eq!(vec![
+            Token::Timestamp {
+                ty: TimestampType::Utc("%Y-%m-%d {T} %H:%M:%S.%.6f".into())
+            }
+        ], tokens);
+    }
+
+    #[test]
+    fn timestamp_with_pattern_utc_and_braces_limit() {
+        let tokens = parse("{timestamp:{{{%Y-%m-%dT%H:%M:%S.%.6f}}}s}").unwrap();
+
+        assert_eq!(vec![
+            Token::Timestamp {
+                ty: TimestampType::Utc("{%Y-%m-%dT%H:%M:%S.%.6f}".into())
+            }
+        ], tokens);
     }
 
     #[test]
