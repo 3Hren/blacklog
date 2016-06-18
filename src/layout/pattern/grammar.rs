@@ -136,6 +136,12 @@ pub enum TimestampType {
     Local(String),
 }
 
+pub struct FillSpec {
+    fill: char,
+    align: Align,
+    width: usize,
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub enum Token {
     /// Piece of pattern between placeholders.
@@ -148,10 +154,18 @@ pub enum Token {
     Severity { ty: SeverityType },
     /// Severity placeholder either numeric or string with spec.
     SeverityExt { fill: char, align: Align, width: usize, ty: SeverityType },
-    ///
+    /// Timestamp placeholder without spec.
     Timestamp { ty: TimestampType },
-    ///
+    /// Timestamp placeholder with spec.
     TimestampExt { fill: char, align: Align, width: usize, ty: TimestampType },
+    ///
+    // TimestampNum(Option<FillSpec>),
+    // TimestampUtc(Option<String>, Option<FillSpec>),
+    // TimestampLocal(Option<String>, Option<FillSpec>),
+    // ProcessId(Option<FillSpec>),
+    // ProcessName(Option<FillSpec>),
+    // ThreadId(Option<FillSpec>),
+    // ThreadName(Option<FillSpec>),
     Placeholder(String, Key),
 }
 

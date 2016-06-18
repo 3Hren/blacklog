@@ -18,5 +18,5 @@ pub trait Layout {
     fn format(&self, rec: &Record, wr: &mut Write) -> Result<(), Error>;
 }
 
-// TODO: Temporary.
+// TODO: Temporary to suppress dead-code warnings.
 pub use self::pattern::PatternLayout;
