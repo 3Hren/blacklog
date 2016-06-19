@@ -1,3 +1,4 @@
+use std::fmt::Arguments;
 use std::io::Write;
 use std::sync::atomic::{AtomicIsize, Ordering};
 use std::sync::mpsc;
@@ -55,6 +56,8 @@ impl<'a> MetaList<'a> {
     }
 }
 
+pub type Error = ::std::io::Error;
+
 pub struct Logger {
     severity: AtomicIsize,
     tx: mpsc::Sender<()>, // TODO: <RecordBuf>.
@@ -77,8 +80,7 @@ impl Logger {
         }
     }
 
-    // fn log<'a, S>(&self, severity: S, format: Arguments<'a>, meta: &MetaList<'a>) -> Result<(), Error>
-    //     where S: Severity;
+    // TODO:
     // For asynchronous logger:
     // - Pass severity filtering.
     // - Format.
@@ -94,14 +96,34 @@ impl Logger {
     // - Make Record.
     // - Layout.
     // - Broadcast to appenders.
-
-    pub fn log<'a>(&self, severity: Severity, message: &str, meta: &MetaList<'a>) {
-        if severity >= self.severity.load(Ordering::Relaxed) {
-            let rec = Record::new(severity, message);
-            self.tx.send(()).unwrap();
+    fn log<'a>(&self, sev: Severity, format: Arguments<'a>, meta: &MetaList<'a>) ->
+        Result<(), Error>
+    {
+        if sev >= self.severity.load(Ordering::Relaxed) {
+            // Do magic.
         }
+
+        Ok(())
     }
 }
+
+#[macro_export]
+macro_rules! log (
+    ($log:ident, $sev:expr, $fmt:expr, [$($args:tt)*], {$($name:ident: $val:expr,)*}) => {
+        $log.log_($sev, format_args!($fmt, $($args)*), &MetaList::new(
+            &[$(Meta::new(stringify!($name), $val)),*]
+        ));
+    };
+    ($log:ident, $sev:expr, $fmt:expr, [$($args:tt)*]) => {
+        $log.log_($sev, format_args!($fmt, $($args)*), &MetaList::new(&[]));
+    };
+    ($log:ident, $sev:expr, $fmt:expr, $($args:tt)*) => {
+        $log.log_($sev, format_args!($fmt, $($args)*), &MetaList::new(&[]));
+    };
+    ($log:ident, $sev:expr, $fmt:expr) => {
+        $log.log_($sev, format_args!($fmt), &MetaList::new(&[]));
+    };
+);
 
 #[cfg(test)]
 mod tests {
@@ -115,11 +137,18 @@ mod tests {
             Meta::new("path", "/usr/bin/env"),
         ]));
 
+        log!(log, 0, "file does not exist: /var/www/favicon.ico");
+        log!(log, 0, "file does not exist: {}", "/var/www/favicon.ico");
+        log!(log, 0, "file does not exist: {}", ["/var/www/favicon.ico"]);
+        log!(log, 0, "file does not exist: {}", ["/var/www/favicon.ico"], {
+            path: "/home",
+            target: "core",
+        });
+
         // Ideal:
         // log!(logger, 0, "le message: {name}, {}", 42,
         //     name: "Vasya",
         //     path: "/usr/bin"
         // );
-        // -> Arguments<'a>, &'a [Meta<'a>].
     }
 }
