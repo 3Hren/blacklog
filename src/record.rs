@@ -2,10 +2,28 @@ use chrono::{DateTime, UTC};
 
 use Severity;
 
+enum Value<'a> {
+    String(&'a str),
+}
+
+struct Meta<'a> {
+    name: &'a str,
+    value: Value<'a>,
+}
+
+struct MetaList<'a> {
+    meta: &'a [Meta<'a>],
+    next: Option<&'a MetaList<'a>>,
+}
+
 #[derive(Debug)]
 pub struct RecordBuilder<'a> {
     severity: Severity,
     message: &'a str,
+    // thread: usize,
+    // args: Arguments<'a>,
+    // meta: &'a MetaList<'a>,
+
 }
 
 impl<'a> RecordBuilder<'a> {
