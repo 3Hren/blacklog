@@ -15,3 +15,5 @@
 - [ ] Implement owned timestamp generator instead of interpretation.
 - [ ] Make token generator for pattern layout to act like lightweight pattern.
 - [ ] Severity as a Trait.
+- [ ] Scoped logging (probably in conjunction with tracing sub-library).
+- [ ] Inflector.
