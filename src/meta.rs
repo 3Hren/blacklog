@@ -97,24 +97,24 @@ mod tests {
     use super::Value;
 
     #[test]
-    fn bool_into_value() {
-        assert_eq!(Value::Bool(true), true.into());
-        assert_eq!(Value::Bool(false), false.into());
+    fn from_bool() {
+        assert_eq!(Value::Bool(true), From::from(true));
+        assert_eq!(Value::Bool(false), From::from(false));
     }
 
     #[test]
-    fn i8_into_value() {
-        assert_eq!(Value::Signed(42), 42i8.into());
+    fn from_i8() {
+        assert_eq!(Value::Signed(42), From::from(42i8));
     }
 
     #[test]
-    fn i16_into_value() {
-        assert_eq!(Value::Signed(4200), 4200i16.into());
+    fn from_i16() {
+        assert_eq!(Value::Signed(4200), From::from(4200i16));
     }
 
     #[test]
-    fn str_into_value() {
-        assert_eq!(Value::String(Cow::Borrowed("le message")), "le message".into());
+    fn from_str() {
+        assert_eq!(Value::String(Cow::Borrowed("le message")), From::from("le message"));
     }
 
     #[test]
