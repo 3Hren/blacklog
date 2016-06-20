@@ -112,7 +112,10 @@ impl<'a, T> From<Option<T>> for Value<'a>
     where T: Into<Value<'a>>
 {
     fn from(val: Option<T>) -> Value<'a> {
-        unimplemented!();
+        match val {
+            Some(val) => val.into(),
+            None => Value::Nil,
+        }
     }
 }
 
@@ -251,5 +254,10 @@ mod tests {
     fn from_none() {
         let val: Option<bool> = None;
         assert_eq!(Value::Nil, From::from(val));
+    }
+
+    #[test]
+    fn from_some() {
+        assert_eq!(Value::Signed(42), From::from(Some(42)));
     }
 }
