@@ -15,7 +15,9 @@ pub mod layout;
 pub mod logger;
 mod record;
 mod severity;
+mod meta;
 
 pub use self::record::Record;
 pub use self::severity::Severity;
 pub use self::logger::Logger;
+pub use self::meta::{Meta, MetaList, Value};

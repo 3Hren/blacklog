@@ -4,57 +4,7 @@ use std::sync::atomic::{AtomicIsize, Ordering};
 use std::sync::mpsc;
 use std::thread::{self, JoinHandle};
 
-use {Record, Severity};
-
-pub enum Value<'a> {
-    Nil,
-    // Bool(bool),
-    // Signed(i64),
-    // Unsigned(u64),
-    // Float(f64),
-    String(&'a str),
-    // Func(&'a Fn(&mut Write) -> Result<(), ::std::io::Error>),
-}
-
-impl<'a> Into<Value<'a>> for &'a str {
-    fn into(self) -> Value<'a> {
-        Value::String(&self)
-    }
-}
-
-pub struct Meta<'a> {
-    name: &'a str,
-    value: Value<'a>,
-}
-
-impl<'a> Meta<'a> {
-    pub fn new<V>(name: &'a str, value: V) -> Meta<'a>
-        where V: Into<Value<'a>>
-    {
-        Meta {
-            name: name,
-            value: value.into(),
-        }
-    }
-}
-
-pub struct MetaList<'a> {
-    prev: Option<&'a MetaList<'a>>,
-    meta: &'a [Meta<'a>],
-}
-
-impl<'a> MetaList<'a> {
-    pub fn new(meta: &'a [Meta<'a>]) -> MetaList<'a> {
-        MetaList::next(meta, None)
-    }
-
-    pub fn next(meta: &'a [Meta<'a>], prev: Option<&'a MetaList<'a>>) -> MetaList<'a> {
-        MetaList {
-            prev: prev,
-            meta: meta,
-        }
-    }
-}
+use {Meta, MetaList, Record, Severity};
 
 pub type Error = ::std::io::Error;
 
@@ -110,32 +60,29 @@ impl Logger {
 #[macro_export]
 macro_rules! log (
     ($log:ident, $sev:expr, $fmt:expr, [$($args:tt)*], {$($name:ident: $val:expr,)*}) => {
-        $log.log_($sev, format_args!($fmt, $($args)*), &MetaList::new(
+        $log.log($sev, format_args!($fmt, $($args)*), &MetaList::new(
             &[$(Meta::new(stringify!($name), $val)),*]
         ));
     };
     ($log:ident, $sev:expr, $fmt:expr, [$($args:tt)*]) => {
-        $log.log_($sev, format_args!($fmt, $($args)*), &MetaList::new(&[]));
+        $log.log($sev, format_args!($fmt, $($args)*), &MetaList::new(&[]));
     };
     ($log:ident, $sev:expr, $fmt:expr, $($args:tt)*) => {
-        $log.log_($sev, format_args!($fmt, $($args)*), &MetaList::new(&[]));
+        $log.log($sev, format_args!($fmt, $($args)*), &MetaList::new(&[]));
     };
     ($log:ident, $sev:expr, $fmt:expr) => {
-        $log.log_($sev, format_args!($fmt), &MetaList::new(&[]));
+        $log.log($sev, format_args!($fmt), &MetaList::new(&[]));
     };
 );
 
 #[cfg(test)]
 mod tests {
-    use super::{Logger, Meta, MetaList};
+    use {Meta, MetaList};
+    use super::{Logger};
 
     #[test]
     fn log() {
         let log = Logger::new();
-
-        log.log(0, "le message", &MetaList::new(&[
-            Meta::new("path", "/usr/bin/env"),
-        ]));
 
         log!(log, 0, "file does not exist: /var/www/favicon.ico");
         log!(log, 0, "file does not exist: {}", "/var/www/favicon.ico");
