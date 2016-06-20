@@ -7,7 +7,7 @@ pub enum Value<'a> {
     Bool(bool),
     Signed(i64),
     Unsigned(u64),
-    // Float(f64),
+    Float(f64),
     String(Cow<'a, str>),
     // Func(&'a Fn(&mut Write) -> Result<(), ::std::io::Error>),
 }
@@ -75,6 +75,18 @@ impl<'a> From<u64> for Value<'a> {
 impl<'a> From<usize> for Value<'a> {
     fn from(val: usize) -> Value<'a> {
         Value::Unsigned(val as u64)
+    }
+}
+
+impl<'a> From<f32> for Value<'a> {
+    fn from(val: f32) -> Value<'a> {
+        Value::Float(val as f64)
+    }
+}
+
+impl<'a> From<f64> for Value<'a> {
+    fn from(val: f64) -> Value<'a> {
+        Value::Float(val)
     }
 }
 
@@ -198,6 +210,24 @@ mod tests {
     #[test]
     fn from_usize() {
         assert_eq!(Value::Unsigned(4200), From::from(4200usize));
+    }
+
+    #[test]
+    fn from_f32() {
+        if let Value::Float(val) = From::from(3.1415f32) {
+            assert!(val - 3.1415 < 1e-6);
+        } else {
+            assert!(false);
+        }
+    }
+
+    #[test]
+    fn from_f64() {
+        if let Value::Float(val) = From::from(3.1415f64) {
+            assert!(val - 3.1415 < 1e-6);
+        } else {
+            assert!(false);
+        }
     }
 
     #[test]
