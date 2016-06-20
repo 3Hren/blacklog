@@ -46,14 +46,10 @@ impl Logger {
     // - Make Record.
     // - Layout.
     // - Broadcast to appenders.
-    fn log<'a>(&self, sev: Severity, format: Arguments<'a>, meta: &MetaList<'a>) ->
-        Result<(), Error>
-    {
+    fn log<'a>(&self, sev: Severity, format: Arguments<'a>, meta: &MetaList<'a>) {
         if sev >= self.severity.load(Ordering::Relaxed) {
             // Do magic.
         }
-
-        Ok(())
     }
 }
 
@@ -88,8 +84,10 @@ mod tests {
         log!(log, 0, "file does not exist: {}", "/var/www/favicon.ico");
         log!(log, 0, "file does not exist: {}", ["/var/www/favicon.ico"]);
         log!(log, 0, "file does not exist: {}", ["/var/www/favicon.ico"], {
+            flag: true,
             path: "/home",
             target: "core",
+            owned: "le message".to_string(),
         });
 
         // Ideal:

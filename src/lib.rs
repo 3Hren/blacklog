@@ -10,14 +10,14 @@ extern crate chrono;
 #[macro_use] extern crate quick_error;
 #[cfg(feature="benchmark")] extern crate test;
 
-pub mod appender;
+// pub mod appender;
 pub mod layout;
-pub mod logger;
+// pub mod logger;
 mod record;
 mod severity;
 mod meta;
 
 pub use self::record::Record;
 pub use self::severity::Severity;
-pub use self::logger::Logger;
+// pub use self::logger::Logger;
 pub use self::meta::{Meta, MetaList, Value};
