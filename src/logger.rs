@@ -80,9 +80,21 @@ mod tests {
     fn log() {
         let log = Logger::new();
 
+        // Only severity with message.
         log!(log, 0, "file does not exist: /var/www/favicon.ico");
+
+        // Add some meta information.
+        log!(log, 0, "file does not exist: /var/www/favicon.ico", {
+            path: "/home",
+        });
+
+        // Delayed formatting.
         log!(log, 0, "file does not exist: {}", "/var/www/favicon.ico");
+
+        // Alternative syntax for delayed formatting without additional meta information.
         log!(log, 0, "file does not exist: {}", ["/var/www/favicon.ico"]);
+
+        // Full syntax both with delayed formatting and meta information.
         log!(log, 0, "file does not exist: {}", ["/var/www/favicon.ico"], {
             flag: true,
             path: "/home",
