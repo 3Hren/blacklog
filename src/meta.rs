@@ -119,6 +119,22 @@ impl<'a, T> From<Option<T>> for Value<'a>
     }
 }
 
+enum ValueBuf {
+    String(String),
+}
+
+impl ValueBuf {
+    pub fn as_value(&self) -> Value {
+        unimplemented!();
+    }
+}
+
+impl<'a> From<Value<'a>> for ValueBuf {
+    fn from(val: Value<'a>) -> ValueBuf {
+        unimplemented!();
+    }
+}
+
 pub struct Meta<'a> {
     name: &'a str,
     value: Value<'a>,

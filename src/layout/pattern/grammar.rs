@@ -135,12 +135,12 @@ pub enum TimestampType {
     Utc(String),
     Local(String),
 }
-
-pub struct FillSpec {
-    fill: char,
-    align: Align,
-    width: usize,
-}
+//
+// pub struct FillSpec {
+//     fill: char,
+//     align: Align,
+//     width: usize,
+// }
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Token {
