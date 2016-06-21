@@ -12,7 +12,7 @@ extern crate chrono;
 
 // pub mod appender;
 pub mod layout;
-// pub mod logger;
+mod logger; // TODO: pub.
 mod record;
 mod severity;
 mod meta;

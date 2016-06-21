@@ -60,6 +60,9 @@ macro_rules! log (
             &[$(Meta::new(stringify!($name), $val)),*]
         ));
     };
+    ($log:ident, $sev:expr, $fmt:expr, {$($name:ident: $val:expr,)*}) => {
+        log!($log, $sev, $fmt, [], {$($name: $val,)*})
+    };
     ($log:ident, $sev:expr, $fmt:expr, [$($args:tt)*]) => {
         $log.log($sev, format_args!($fmt, $($args)*), &MetaList::new(&[]));
     };
