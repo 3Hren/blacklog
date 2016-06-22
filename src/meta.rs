@@ -11,14 +11,18 @@ use Severity;
 
 pub type Error = ::std::io::Error;
 
-#[derive(Debug, Copy, Clone)]
+pub trait Encode2 : Encode + ToEncodeBuf {}
+
+impl<T: Encode + ToEncodeBuf> Encode2 for T {}
+
+#[derive(Copy, Clone)]
 pub struct Meta<'a> {
     name: &'static str,
-    value: &'a Encode,
+    value: &'a Encode2,
 }
 
 impl<'a> Meta<'a> {
-    pub fn new(name: &'static str, value: &'a Encode) -> Meta<'a> {
+    pub fn new(name: &'static str, value: &'a Encode2) -> Meta<'a> {
         Meta {
             name: name,
             value: value,
@@ -26,7 +30,7 @@ impl<'a> Meta<'a> {
     }
 }
 
-#[derive(Debug)]
+// #[derive(Debug)]
 pub struct MetaList<'a> {
     prev: Option<&'a MetaList<'a>>,
     meta: &'a [Meta<'a>],
@@ -45,7 +49,7 @@ impl<'a> MetaList<'a> {
     }
 }
 
-#[derive(Debug)]
+// #[derive(Debug)]
 pub struct MetaBuf {
     name: &'static str,
     value: Box<EncodeBuf>,
@@ -81,9 +85,11 @@ impl<'a> From<&'a MetaList<'a>> for Vec<MetaBuf> {
     }
 }
 
-pub trait Encode : Debug + Send + Sync {
+pub trait Encode : Send + Sync {
     fn encode(&self, encoder: &mut Encoder) -> Result<(), Error>;
+}
 
+pub trait ToEncodeBuf {
     fn to_encode_buf(&self) -> Box<EncodeBuf>;
 }
 
@@ -100,7 +106,9 @@ impl Encode for bool {
     fn encode(&self, encoder: &mut Encoder) -> Result<(), Error> {
         encoder.encode_bool(*self)
     }
+}
 
+impl ToEncodeBuf for bool {
     fn to_encode_buf(&self) -> Box<EncodeBuf> {
         box self.to_owned()
     }
@@ -110,7 +118,9 @@ impl Encode for &'static str {
     fn encode(&self, encoder: &mut Encoder) -> Result<(), Error> {
         encoder.encode_str(self)
     }
+}
 
+impl ToEncodeBuf for &'static str {
     fn to_encode_buf(&self) -> Box<EncodeBuf> {
         // box self.to_owned()
         box Cow::Borrowed(*self)
@@ -121,17 +131,22 @@ impl Encode for str {
     fn encode(&self, encoder: &mut Encoder) -> Result<(), Error> {
         encoder.encode_str(self)
     }
+}
 
+impl ToEncodeBuf for str {
     fn to_encode_buf(&self) -> Box<EncodeBuf> {
         box self.to_owned()
     }
 }
 
+// TODO: Does it ever works?
 impl<'a> Encode for Cow<'a, str> {
     fn encode(&self, encoder: &mut Encoder) -> Result<(), Error> {
         encoder.encode_str(self)
     }
+}
 
+impl<'a> ToEncodeBuf for Cow<'a, str> {
     fn to_encode_buf(&self) -> Box<EncodeBuf> {
         unimplemented!()
         // box self.to_owned()
@@ -142,9 +157,29 @@ impl Encode for String {
     fn encode(&self, encoder: &mut Encoder) -> Result<(), Error> {
         encoder.encode_str(&self[..])
     }
+}
 
+impl ToEncodeBuf for String {
     fn to_encode_buf(&self) -> Box<EncodeBuf> {
         box self.to_owned()
+    }
+}
+
+impl<E, F> Encode for Arc<Box<F>>
+    where E: Encode,
+          F: Fn() -> E + Send + Sync + 'static
+{
+    fn encode(&self, encoder: &mut Encoder) -> Result<(), Error> {
+        unimplemented!();
+    }
+}
+
+impl<E, F> ToEncodeBuf for Arc<Box<F>>
+    where E: Encode,
+          F: Fn() -> E + Send + Sync + 'static
+{
+    fn to_encode_buf(&self) -> Box<EncodeBuf> {
+        box self.clone()
     }
 }
 
@@ -160,7 +195,7 @@ impl<W: Write> Encoder for W {
 
 // TODO: impl Iterator<Item=Meta> for RecordIter<'a> {}
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Copy, Clone)]
 pub struct Context {
     thread: usize,
     module: &'static str,
@@ -169,7 +204,7 @@ pub struct Context {
 
 // TODO: When filtering we can pass both Record and RecordBuf. That's why we need a trait to union
 // them.
-#[derive(Debug)]
+// #[derive(Debug)]
 pub struct Record<'a> {
     timestamp: DateTime<UTC>, // TODO: Consumes about 25ns. Also it may be useful to obtain local time.
     severity: Severity,
@@ -178,7 +213,7 @@ pub struct Record<'a> {
     meta: &'a MetaList<'a>,
 }
 
-#[derive(Debug)]
+// #[derive(Debug)]
 pub struct RecordBuf {
     timestamp: DateTime<UTC>,
     severity: Severity,
@@ -219,7 +254,7 @@ impl Inner {
             for event in rx {
                 match event {
                     Event::Record(rec) => {
-                        println!("{:?}", rec);
+                        // println!("{:?}", rec);
                     }
                     Event::Shutdown => break,
                 }
@@ -331,6 +366,8 @@ impl Logger for AsyncLogger {
 
 #[cfg(test)]
 mod tests {
+    use std::sync::Arc;
+
     use super::{AsyncLogger, Meta, MetaList, Encode};
 
     #[cfg(feature="benchmark")]
@@ -372,6 +409,17 @@ mod tests {
         });
 
         log.scoped(move || "wow");
+    }
+
+    #[test]
+    fn log_fn() {
+        let log = AsyncLogger::new();
+        let val = 42;
+
+        // Only severity with message.
+        log!(log, 0, "file does not exist: /var/www/favicon.ico", {
+            lazy: Arc::new(box move || { format!("lazy message of {}", val) }),
+        });
     }
 
     #[cfg(feature="benchmark")]
