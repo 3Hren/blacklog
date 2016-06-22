@@ -219,7 +219,7 @@ impl Inner {
             for event in rx {
                 match event {
                     Event::Record(rec) => {
-                        // println!("{:?}", rec);
+                        println!("{:?}", rec);
                     }
                     Event::Shutdown => break,
                 }
@@ -251,25 +251,9 @@ pub struct AsyncLogger {
     inner: Arc<Inner>,
 }
 
-impl AsyncLogger {
-    pub fn new() -> AsyncLogger {
-        let (tx, rx) = mpsc::channel();
-
-        AsyncLogger {
-            tx: tx.clone(),
-            inner: Arc::new(Inner::new(tx, rx)),
-        }
-    }
-}
-
-impl Logger for AsyncLogger {
-    fn log<'a>(&self, record: &Record<'a>) {
-        if record.severity >= self.inner.severity.load(Ordering::Relaxed) {
-            if let Err(..) = self.tx.send(Event::Record(RecordBuf::from(record))) {
-                // TODO: Return error.
-            }
-        }
-    }
+struct Scope<'a, F: FnOnce() -> &'static str> {
+    logger: &'a Logger,
+    f: F,
 }
 
 #[macro_export]
@@ -309,6 +293,41 @@ macro_rules! log (
         log!($log, $sev, $fmt, [], {})
     }};
 );
+
+impl<'a, F: FnOnce() -> &'static str> Drop for Scope<'a, F> {
+    fn drop(&mut self) {
+        let l = &self.logger;
+        log!(l, 42, "fuck you");
+    }
+}
+
+impl AsyncLogger {
+    pub fn new() -> AsyncLogger {
+        let (tx, rx) = mpsc::channel();
+
+        AsyncLogger {
+            tx: tx.clone(),
+            inner: Arc::new(Inner::new(tx, rx)),
+        }
+    }
+
+    fn scoped<F: FnOnce() -> &'static str>(&self, f: F) -> Scope<F> {
+        Scope {
+            logger: self as &Logger,
+            f: f,
+        }
+    }
+}
+
+impl Logger for AsyncLogger {
+    fn log<'a>(&self, record: &Record<'a>) {
+        if record.severity >= self.inner.severity.load(Ordering::Relaxed) {
+            if let Err(..) = self.tx.send(Event::Record(RecordBuf::from(record))) {
+                // TODO: Return error.
+            }
+        }
+    }
+}
 
 #[cfg(test)]
 mod tests {
@@ -351,6 +370,8 @@ mod tests {
             target: "core",
             owned: "le message".to_string(),
         });
+
+        log.scoped(move || "wow");
     }
 
     #[cfg(feature="benchmark")]
