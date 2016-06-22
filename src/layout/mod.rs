@@ -1,4 +1,3 @@
-//! TODO: Rename entire module to `protocol`.
 use std::io::Write;
 
 use super::Record;
