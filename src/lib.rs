@@ -11,13 +11,9 @@ extern crate chrono;
 #[cfg(feature="benchmark")] extern crate test;
 
 // pub mod appender;
-pub mod layout;
-mod logger; // TODO: pub.
-mod record;
+// pub mod layout;
 mod severity;
 mod meta;
 
-pub use self::record::Record;
 pub use self::severity::Severity;
-// pub use self::logger::Logger;
-pub use self::meta::{Meta, MetaList, Value};
+pub use self::meta::Encode;
