@@ -300,13 +300,13 @@ macro_rules! log (
         log!($log, $sev, $fmt, [], {$($name: $val,)*})
     }};
     ($log:ident, $sev:expr, $fmt:expr, [$($args:tt)*]) => {{
-        $log!($log, $sev, $fmt, [$($args)*], {})
+        log!($log, $sev, $fmt, [$($args)*], {})
     }};
     ($log:ident, $sev:expr, $fmt:expr, $($args:tt)*) => {{
-        $log!($log, $sev, $fmt, [$($args)*], {})
+        log!($log, $sev, $fmt, [$($args)*], {})
     }};
     ($log:ident, $sev:expr, $fmt:expr) => {{
-        $log!($log, $sev, $fmt, [], {})
+        log!($log, $sev, $fmt, [], {})
     }};
 );
 
