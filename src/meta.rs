@@ -66,7 +66,7 @@ impl<'a> From<&'a MetaList<'a>> for Vec<MetaBuf> {
 
         let mut node = val;
         loop {
-            for meta in node.meta {
+            for meta in node.meta.iter().rev() {
                 result.push(MetaBuf::new(meta.name, meta.value.to_encode_buf()));
             }
 
