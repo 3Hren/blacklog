@@ -21,9 +21,12 @@ fn __get_id() -> usize {
 
 #[cfg(test)]
 mod tests {
-    use std::thread;
-
     use super::{id};
+
+    #[test]
+    fn test_id() {
+        assert!(id() > 0);
+    }
 
     #[cfg(feature="benchmark")]
     use test::{self, Bencher};
@@ -41,7 +44,7 @@ mod tests {
     #[bench]
     fn name(b: &mut Bencher) {
         b.iter(|| {
-            test::black_box(thread::current().name());
+            test::black_box(::std::thread::current().name());
         });
     }
 }

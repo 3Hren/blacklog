@@ -319,7 +319,7 @@ mod tests {
 
     #[test]
     fn logger_send() {
-        fn checker<T: Send>(v: T) {}
+        fn checker<T: Send>(_v: T) {}
 
         let log = AsyncLogger::new();
         checker(log.clone());
