@@ -357,7 +357,7 @@ macro_rules! log (
         use $crate::{Context, Logger, Record};
 
         let context = Context {
-            thread: 0,
+            thread: $crate::thread::id(),
             module: module_path!(),
             line: line!(),
         };
@@ -483,7 +483,7 @@ mod tests {
         // Only severity with message.
         log!(log, 0, "file does not exist: /var/www/favicon.ico", {
             lazy: Lazy::new(move || { format!("lazy message of {}", val) }),
-            lazy: Lazy::new(move || { val }),
+            lazy: Lazy::new(move || val ),
             lazy: Lazy::new(move || fact(10)),
         });
     }
