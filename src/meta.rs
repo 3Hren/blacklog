@@ -1,5 +1,5 @@
 use std::borrow::Cow;
-use std::fmt::{Arguments, Debug};
+use std::fmt::{Arguments, Formatter, Debug};
 use std::io::Write;
 use std::sync::{mpsc, Arc, Mutex};
 use std::sync::atomic::{AtomicIsize, Ordering};
@@ -15,7 +15,7 @@ pub trait Encode2 : Encode + ToEncodeBuf {}
 
 impl<T: Encode + ToEncodeBuf> Encode2 for T {}
 
-#[derive(Copy, Clone)]
+#[derive(Debug, Copy, Clone)]
 pub struct Meta<'a> {
     name: &'static str,
     value: &'a Encode2,
@@ -30,7 +30,7 @@ impl<'a> Meta<'a> {
     }
 }
 
-// #[derive(Debug)]
+#[derive(Debug)]
 pub struct MetaList<'a> {
     prev: Option<&'a MetaList<'a>>,
     meta: &'a [Meta<'a>],
@@ -49,7 +49,7 @@ impl<'a> MetaList<'a> {
     }
 }
 
-// #[derive(Debug)]
+#[derive(Debug)]
 pub struct MetaBuf {
     name: &'static str,
     value: Box<EncodeBuf>,
@@ -85,7 +85,46 @@ impl<'a> From<&'a MetaList<'a>> for Vec<MetaBuf> {
     }
 }
 
-pub trait Encode : Send + Sync {
+#[derive(Clone)]
+pub struct Lazy<F: Fn() -> E + Send + Sync + 'static, E: Encode>(Arc<Box<F>>);
+
+impl<F, E> Debug for Lazy<F, E>
+    where F: Fn() -> E + Send + Sync + 'static,
+          E: Encode
+{
+    fn fmt(&self, f: &mut Formatter) -> Result<(), ::std::fmt::Error> {
+        write!(f, "[Lazy]")
+    }
+}
+
+impl<F, E> Lazy<F, E>
+    where F: Fn() -> E + Send + Sync + 'static,
+          E: Encode
+{
+    pub fn new(f: F) -> Lazy<F, E> {
+        Lazy(Arc::new(box f))
+    }
+}
+
+impl<F, E> Encode for Lazy<F, E>
+    where F: Fn() -> E + Send + Sync + 'static,
+          E: Encode
+{
+    fn encode(&self, encoder: &mut Encoder) -> Result<(), Error> {
+        self.0().encode(encoder)
+    }
+}
+
+impl<E, F> ToEncodeBuf for Lazy<F, E>
+    where F: Fn() -> E + Send + Sync + 'static,
+          E: Encode + 'static
+{
+    fn to_encode_buf(&self) -> Box<EncodeBuf> {
+        box Lazy(self.0.clone())
+    }
+}
+
+pub trait Encode : Send + Sync + Debug {
     fn encode(&self, encoder: &mut Encoder) -> Result<(), Error>;
 }
 
@@ -99,6 +138,7 @@ impl<T: Encode> EncodeBuf for T {}
 
 pub trait Encoder {
     fn encode_bool(&mut self, value: bool) -> Result<(), Error>;
+    fn encode_u64(&mut self, value: u64) -> Result<(), Error>;
     fn encode_str(&mut self, value: &str) -> Result<(), Error>;
 }
 
@@ -109,6 +149,18 @@ impl Encode for bool {
 }
 
 impl ToEncodeBuf for bool {
+    fn to_encode_buf(&self) -> Box<EncodeBuf> {
+        box self.to_owned()
+    }
+}
+
+impl Encode for u64 {
+    fn encode(&self, encoder: &mut Encoder) -> Result<(), Error> {
+        encoder.encode_u64(*self)
+    }
+}
+
+impl ToEncodeBuf for u64 {
     fn to_encode_buf(&self) -> Box<EncodeBuf> {
         box self.to_owned()
     }
@@ -165,26 +217,30 @@ impl ToEncodeBuf for String {
     }
 }
 
-impl<E, F> Encode for Arc<Box<F>>
-    where E: Encode,
-          F: Fn() -> E + Send + Sync + 'static
-{
-    fn encode(&self, encoder: &mut Encoder) -> Result<(), Error> {
-        unimplemented!();
-    }
-}
+// impl<E, F> Encode for Arc<Box<F>>
+//     where E: Encode,
+//           F: Fn() -> E + Send + Sync + 'static
+// {
+//     fn encode(&self, encoder: &mut Encoder) -> Result<(), Error> {
+//         self().encode(encoder)
+//     }
+// }
 
-impl<E, F> ToEncodeBuf for Arc<Box<F>>
-    where E: Encode,
-          F: Fn() -> E + Send + Sync + 'static
-{
-    fn to_encode_buf(&self) -> Box<EncodeBuf> {
-        box self.clone()
-    }
-}
+// impl<E, F> ToEncodeBuf for Arc<Box<F>>
+//     where E: Encode,
+//           F: Fn() -> E + Send + Sync + 'static
+// {
+//     fn to_encode_buf(&self) -> Box<EncodeBuf> {
+//         box self.clone()
+//     }
+// }
 
 impl<W: Write> Encoder for W {
     fn encode_bool(&mut self, value: bool) -> Result<(), Error> {
+        write!(self, "{}", value)
+    }
+
+    fn encode_u64(&mut self, value: u64) -> Result<(), Error> {
         write!(self, "{}", value)
     }
 
@@ -195,7 +251,7 @@ impl<W: Write> Encoder for W {
 
 // TODO: impl Iterator<Item=Meta> for RecordIter<'a> {}
 
-#[derive(Copy, Clone)]
+#[derive(Debug, Copy, Clone)]
 pub struct Context {
     thread: usize,
     module: &'static str,
@@ -204,7 +260,7 @@ pub struct Context {
 
 // TODO: When filtering we can pass both Record and RecordBuf. That's why we need a trait to union
 // them.
-// #[derive(Debug)]
+#[derive(Debug)]
 pub struct Record<'a> {
     timestamp: DateTime<UTC>, // TODO: Consumes about 25ns. Also it may be useful to obtain local time.
     severity: Severity,
@@ -213,7 +269,7 @@ pub struct Record<'a> {
     meta: &'a MetaList<'a>,
 }
 
-// #[derive(Debug)]
+#[derive(Debug)]
 pub struct RecordBuf {
     timestamp: DateTime<UTC>,
     severity: Severity,
@@ -235,6 +291,7 @@ impl<'a> From<&'a Record<'a>> for RecordBuf {
     }
 }
 
+#[derive(Debug)]
 enum Event {
     Record(RecordBuf),
     // Reset(Vec<Handler>),
@@ -254,7 +311,7 @@ impl Inner {
             for event in rx {
                 match event {
                     Event::Record(rec) => {
-                        // println!("{:?}", rec);
+                        println!("{:?}", rec);
                     }
                     Event::Shutdown => break,
                 }
@@ -368,7 +425,7 @@ impl Logger for AsyncLogger {
 mod tests {
     use std::sync::Arc;
 
-    use super::{AsyncLogger, Meta, MetaList, Encode};
+    use super::{AsyncLogger, Lazy, Meta, MetaList, Encode};
 
     #[cfg(feature="benchmark")]
     use test::Bencher;
@@ -414,11 +471,20 @@ mod tests {
     #[test]
     fn log_fn() {
         let log = AsyncLogger::new();
-        let val = 42;
+        let val = true;
+
+        fn fact(n: u64) -> u64 {
+            match n {
+                0 | 1 => 1,
+                n => n * fact(n - 1),
+            }
+        };
 
         // Only severity with message.
         log!(log, 0, "file does not exist: /var/www/favicon.ico", {
-            lazy: Arc::new(box move || { format!("lazy message of {}", val) }),
+            lazy: Lazy::new(move || { format!("lazy message of {}", val) }),
+            lazy: Lazy::new(move || { val }),
+            lazy: Lazy::new(move || fact(10)),
         });
     }
 
