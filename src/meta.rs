@@ -241,22 +241,28 @@ impl Drop for Inner {
     }
 }
 
-#[derive(Clone)] // TODO: Test.
-pub struct Logger {
+pub trait Logger {
+    fn log<'a>(&self, sev: Severity, format: Arguments<'a>, meta: &MetaList<'a>);
+}
+
+#[derive(Clone)]
+pub struct AsyncLogger {
     tx: mpsc::Sender<Event>,
     inner: Arc<Inner>,
 }
 
-impl Logger {
-    pub fn new() -> Logger {
+impl AsyncLogger {
+    pub fn new() -> AsyncLogger {
         let (tx, rx) = mpsc::channel();
 
-        Logger {
+        AsyncLogger {
             tx: tx.clone(),
             inner: Arc::new(Inner::new(tx, rx)),
         }
     }
+}
 
+impl Logger for AsyncLogger {
     fn log<'a>(&self, sev: Severity, format: Arguments<'a>, meta: &MetaList<'a>) {
         if sev >= self.inner.severity.load(Ordering::Relaxed) {
             let record = RecordBuf::new(sev, format!("{}", format), From::from(meta));
@@ -270,28 +276,30 @@ impl Logger {
 
 // #[macro_export]
 macro_rules! log (
-    ($log:ident, $sev:expr, $fmt:expr, [$($args:tt)*], {$($name:ident: $val:expr,)*}) => {
-        $log.log($sev, format_args!($fmt, $($args)*), &MetaList::new(
-            &[$(Meta::new(stringify!($name), &$val)),*]
+    ($log:ident, $sev:expr, $fmt:expr, [$($args:tt)*], {$($name:ident: $val:expr,)*}) => {{
+        use $crate::Logger;
+
+        $log.log($sev, format_args!($fmt, $($args)*), &$crate::MetaList::new(
+            &[$($crate::Meta::new(stringify!($name), &$val)),*]
         ));
-    };
-    ($log:ident, $sev:expr, $fmt:expr, {$($name:ident: $val:expr,)*}) => {
+    }};
+    ($log:ident, $sev:expr, $fmt:expr, {$($name:ident: $val:expr,)*}) => {{
         log!($log, $sev, $fmt, [], {$($name: $val,)*})
-    };
-    ($log:ident, $sev:expr, $fmt:expr, [$($args:tt)*]) => {
-        $log.log($sev, format_args!($fmt, $($args)*), &MetaList::new(&[]));
-    };
-    ($log:ident, $sev:expr, $fmt:expr, $($args:tt)*) => {
-        $log.log($sev, format_args!($fmt, $($args)*), &MetaList::new(&[]));
-    };
-    ($log:ident, $sev:expr, $fmt:expr) => {
-        $log.log($sev, format_args!($fmt), &MetaList::new(&[]));
-    };
+    }};
+    ($log:ident, $sev:expr, $fmt:expr, [$($args:tt)*]) => {{
+        $log!($log, $sev, $fmt, [$($args)*], {})
+    }};
+    ($log:ident, $sev:expr, $fmt:expr, $($args:tt)*) => {{
+        $log!($log, $sev, $fmt, [$($args)*], {})
+    }};
+    ($log:ident, $sev:expr, $fmt:expr) => {{
+        $log!($log, $sev, $fmt, [], {})
+    }};
 );
 
 #[cfg(test)]
 mod tests {
-    use super::{Logger, Meta, MetaList, Encode};
+    use super::{AsyncLogger, Meta, MetaList, Encode};
 
     #[cfg(feature="benchmark")]
     use test::Bencher;
@@ -300,13 +308,13 @@ mod tests {
     fn logger_send() {
         fn checker<T: Send>(v: T) {}
 
-        let log = Logger::new();
+        let log = AsyncLogger::new();
         checker(log.clone());
     }
 
     #[test]
     fn log() {
-        let log = Logger::new();
+        let log = AsyncLogger::new();
 
         // Only severity with message.
         log!(log, 0, "file does not exist: /var/www/favicon.ico");
@@ -335,7 +343,7 @@ mod tests {
     #[cfg(feature="benchmark")]
     #[bench]
     fn bench_log_message(b: &mut Bencher) {
-        let log = Logger::new();
+        let log = AsyncLogger::new();
 
         b.iter(|| {
             log!(log, 0, "file does not exist: /var/www/favicon.ico");
@@ -345,7 +353,7 @@ mod tests {
     #[cfg(feature="benchmark")]
     #[bench]
     fn bench_log_message_with_meta1(b: &mut Bencher) {
-        let log = Logger::new();
+        let log = AsyncLogger::new();
 
         b.iter(|| {
             log!(log, 0, "file does not exist: /var/www/favicon.ico", {
@@ -357,7 +365,7 @@ mod tests {
     #[cfg(feature="benchmark")]
     #[bench]
     fn bench_log_message_with_meta6(b: &mut Bencher) {
-        let log = Logger::new();
+        let log = AsyncLogger::new();
 
         b.iter(|| {
             log!(log, 0, "file does not exist: /var/www/favicon.ico", {
@@ -374,7 +382,7 @@ mod tests {
     #[cfg(feature="benchmark")]
     #[bench]
     fn bench_log_message_with_format_and_meta6(b: &mut Bencher) {
-        let log = Logger::new();
+        let log = AsyncLogger::new();
 
         b.iter(|| {
             log!(log, 0, "file does not exist: {}", ["/var/www/favicon.ico"], {
