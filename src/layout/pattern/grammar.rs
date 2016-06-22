@@ -164,6 +164,7 @@ pub enum Token {
     // TimestampLocal(Option<String>, Option<FillSpec>),
     // ProcessId(Option<FillSpec>),
     // ProcessName(Option<FillSpec>),
+    // TODO: types: 's', 'd' with '#' - thread writer, otherwise thread creator of record.
     // ThreadId(Option<FillSpec>),
     // ThreadName(Option<FillSpec>),
     Placeholder(String, Key),
