@@ -20,4 +20,4 @@ mod thread;
 
 pub use self::severity::Severity;
 pub use self::meta::Encode;
-pub use self::meta::{Logger, Meta, MetaList};
+pub use self::meta::{Logger, Meta, MetaList, Record, Context};

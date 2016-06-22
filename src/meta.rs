@@ -158,25 +158,23 @@ impl<W: Write> Encoder for W {
     }
 }
 
-// for token in tokens:
-// match token {
-//  Lit(l) => wr.write_all(l);
-//  Message(msg) => wr.write_all(msg);
-//  Meta(name, value) => {
-//    wr.write_all(name);
-//    wr.write_all(": ");
-//    value.encode(&mut wr);
-//  }
-//}
+// TODO: impl Iterator<Item=Meta> for RecordIter<'a> {}
 
+#[derive(Debug, Copy, Clone)]
+pub struct Context {
+    thread: usize,
+    module: &'static str,
+    line: u32,
+}
+
+// TODO: When filtering we can pass both Record and RecordBuf. That's why we need a trait to union
+// them.
 #[derive(Debug)]
 pub struct Record<'a> {
-    timestamp: DateTime<UTC>,
+    timestamp: DateTime<UTC>, // TODO: Consumes about 25ns. Also it may be useful to obtain local time.
     severity: Severity,
+    context: Context,
     format: Arguments<'a>,
-    // TODO: thread: usize,
-    // TODO: module: &'static str,
-    // TODO: line: u32,
     meta: &'a MetaList<'a>,
 }
 
@@ -184,18 +182,20 @@ pub struct Record<'a> {
 pub struct RecordBuf {
     timestamp: DateTime<UTC>,
     severity: Severity,
+    context: Context,
     message: String,
     /// Ordered from recently added.
     meta: Vec<MetaBuf>,
 }
 
-impl RecordBuf {
-    pub fn new(severity: Severity, message: String, meta: Vec<MetaBuf>) -> RecordBuf {
+impl<'a> From<&'a Record<'a>> for RecordBuf {
+    fn from(val: &'a Record<'a>) -> RecordBuf {
         RecordBuf {
-            timestamp: UTC::now(),
-            severity: severity,
-            message: message,
-            meta: meta,
+            timestamp: val.timestamp,
+            severity: val.severity,
+            context: val.context,
+            message: format!("{}", val.format),
+            meta: From::from(val.meta),
         }
     }
 }
@@ -242,7 +242,7 @@ impl Drop for Inner {
 }
 
 pub trait Logger {
-    fn log<'a>(&self, sev: Severity, format: Arguments<'a>, meta: &MetaList<'a>);
+    fn log<'a>(&self, record: &Record<'a>);
 }
 
 #[derive(Clone)]
@@ -263,25 +263,38 @@ impl AsyncLogger {
 }
 
 impl Logger for AsyncLogger {
-    fn log<'a>(&self, sev: Severity, format: Arguments<'a>, meta: &MetaList<'a>) {
-        if sev >= self.inner.severity.load(Ordering::Relaxed) {
-            let record = RecordBuf::new(sev, format!("{}", format), From::from(meta));
-
-            if let Err(..) = self.tx.send(Event::Record(record)) {
+    fn log<'a>(&self, record: &Record<'a>) {
+        if record.severity >= self.inner.severity.load(Ordering::Relaxed) {
+            if let Err(..) = self.tx.send(Event::Record(RecordBuf::from(record))) {
                 // TODO: Return error.
             }
         }
     }
 }
 
-// #[macro_export]
+#[macro_export]
 macro_rules! log (
     ($log:ident, $sev:expr, $fmt:expr, [$($args:tt)*], {$($name:ident: $val:expr,)*}) => {{
-        use $crate::Logger;
+        extern crate chrono;
 
-        $log.log($sev, format_args!($fmt, $($args)*), &$crate::MetaList::new(
-            &[$($crate::Meta::new(stringify!($name), &$val)),*]
-        ));
+        use chrono::UTC;
+        use $crate::{Context, Logger, Record};
+
+        let context = Context {
+            thread: 0,
+            module: module_path!(),
+            line: line!(),
+        };
+
+        $log.log(&Record {
+            timestamp: UTC::now(),
+            severity: $sev,
+            context: context,
+            format: format_args!($fmt, $($args)*),
+            meta: &$crate::MetaList::new(&[
+                $($crate::Meta::new(stringify!($name), &$val)),*
+            ]),
+        });
     }};
     ($log:ident, $sev:expr, $fmt:expr, {$($name:ident: $val:expr,)*}) => {{
         log!($log, $sev, $fmt, [], {$($name: $val,)*})
