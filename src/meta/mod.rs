@@ -1,3 +1,7 @@
+mod encode;
+
+pub use self::encode::Encode;
+
 use std::borrow::Cow;
 use std::fmt::{Arguments, Formatter, Debug};
 use std::io::Write;
@@ -8,6 +12,48 @@ use std::thread::{self, JoinHandle};
 use chrono::{DateTime, UTC};
 
 use Severity;
+
+use self::encode::{Encoder, EncodeBuf, ToEncodeBuf};
+
+#[derive(Clone)]
+pub struct Lazy<F: Fn() -> E + Send + Sync + 'static, E: Encode>(Arc<Box<F>>);
+
+impl<F, E> Debug for Lazy<F, E>
+    where F: Fn() -> E + Send + Sync + 'static,
+          E: Encode
+{
+    fn fmt(&self, f: &mut Formatter) -> Result<(), ::std::fmt::Error> {
+        write!(f, "[Lazy]")
+    }
+}
+
+impl<F, E> Lazy<F, E>
+    where F: Fn() -> E + Send + Sync + 'static,
+          E: Encode
+{
+    pub fn new(f: F) -> Lazy<F, E> {
+        Lazy(Arc::new(box f))
+    }
+}
+
+impl<F, E> Encode for Lazy<F, E>
+    where F: Fn() -> E + Send + Sync + 'static,
+          E: Encode
+{
+    fn encode(&self, encoder: &mut Encoder) -> Result<(), Error> {
+        self.0().encode(encoder)
+    }
+}
+
+impl<E, F> ToEncodeBuf for Lazy<F, E>
+    where F: Fn() -> E + Send + Sync + 'static,
+          E: Encode + 'static
+{
+    fn to_encode_buf(&self) -> Box<EncodeBuf> {
+        box Lazy(self.0.clone())
+    }
+}
+
 
 pub type Error = ::std::io::Error;
 
@@ -85,152 +131,6 @@ impl<'a> From<&'a MetaList<'a>> for Vec<MetaBuf> {
     }
 }
 
-#[derive(Clone)]
-pub struct Lazy<F: Fn() -> E + Send + Sync + 'static, E: Encode>(Arc<Box<F>>);
-
-impl<F, E> Debug for Lazy<F, E>
-    where F: Fn() -> E + Send + Sync + 'static,
-          E: Encode
-{
-    fn fmt(&self, f: &mut Formatter) -> Result<(), ::std::fmt::Error> {
-        write!(f, "[Lazy]")
-    }
-}
-
-impl<F, E> Lazy<F, E>
-    where F: Fn() -> E + Send + Sync + 'static,
-          E: Encode
-{
-    pub fn new(f: F) -> Lazy<F, E> {
-        Lazy(Arc::new(box f))
-    }
-}
-
-impl<F, E> Encode for Lazy<F, E>
-    where F: Fn() -> E + Send + Sync + 'static,
-          E: Encode
-{
-    fn encode(&self, encoder: &mut Encoder) -> Result<(), Error> {
-        self.0().encode(encoder)
-    }
-}
-
-impl<E, F> ToEncodeBuf for Lazy<F, E>
-    where F: Fn() -> E + Send + Sync + 'static,
-          E: Encode + 'static
-{
-    fn to_encode_buf(&self) -> Box<EncodeBuf> {
-        box Lazy(self.0.clone())
-    }
-}
-
-pub trait Encode : Send + Sync + Debug {
-    fn encode(&self, encoder: &mut Encoder) -> Result<(), Error>;
-}
-
-pub trait ToEncodeBuf {
-    fn to_encode_buf(&self) -> Box<EncodeBuf>;
-}
-
-pub trait EncodeBuf : Encode {}
-
-impl<T: Encode> EncodeBuf for T {}
-
-pub trait Encoder {
-    fn encode_bool(&mut self, value: bool) -> Result<(), Error>;
-    fn encode_u64(&mut self, value: u64) -> Result<(), Error>;
-    fn encode_str(&mut self, value: &str) -> Result<(), Error>;
-}
-
-impl Encode for bool {
-    fn encode(&self, encoder: &mut Encoder) -> Result<(), Error> {
-        encoder.encode_bool(*self)
-    }
-}
-
-impl ToEncodeBuf for bool {
-    fn to_encode_buf(&self) -> Box<EncodeBuf> {
-        box self.to_owned()
-    }
-}
-
-impl Encode for u64 {
-    fn encode(&self, encoder: &mut Encoder) -> Result<(), Error> {
-        encoder.encode_u64(*self)
-    }
-}
-
-impl ToEncodeBuf for u64 {
-    fn to_encode_buf(&self) -> Box<EncodeBuf> {
-        box self.to_owned()
-    }
-}
-
-impl Encode for &'static str {
-    fn encode(&self, encoder: &mut Encoder) -> Result<(), Error> {
-        encoder.encode_str(self)
-    }
-}
-
-impl ToEncodeBuf for &'static str {
-    fn to_encode_buf(&self) -> Box<EncodeBuf> {
-        // box self.to_owned()
-        box Cow::Borrowed(*self)
-    }
-}
-
-impl Encode for str {
-    fn encode(&self, encoder: &mut Encoder) -> Result<(), Error> {
-        encoder.encode_str(self)
-    }
-}
-
-impl ToEncodeBuf for str {
-    fn to_encode_buf(&self) -> Box<EncodeBuf> {
-        box self.to_owned()
-    }
-}
-
-// TODO: Does it ever works?
-impl<'a> Encode for Cow<'a, str> {
-    fn encode(&self, encoder: &mut Encoder) -> Result<(), Error> {
-        encoder.encode_str(self)
-    }
-}
-
-impl<'a> ToEncodeBuf for Cow<'a, str> {
-    fn to_encode_buf(&self) -> Box<EncodeBuf> {
-        unimplemented!()
-        // box self.to_owned()
-    }
-}
-
-impl Encode for String {
-    fn encode(&self, encoder: &mut Encoder) -> Result<(), Error> {
-        encoder.encode_str(&self[..])
-    }
-}
-
-impl ToEncodeBuf for String {
-    fn to_encode_buf(&self) -> Box<EncodeBuf> {
-        box self.to_owned()
-    }
-}
-
-impl<W: Write> Encoder for W {
-    fn encode_bool(&mut self, value: bool) -> Result<(), Error> {
-        write!(self, "{}", value)
-    }
-
-    fn encode_u64(&mut self, value: u64) -> Result<(), Error> {
-        write!(self, "{}", value)
-    }
-
-    fn encode_str(&mut self, value: &str) -> Result<(), Error> {
-        write!(self, "{}", value)
-    }
-}
-
 // TODO: impl Iterator<Item=Meta> for RecordIter<'a> {}
 
 #[derive(Debug, Copy, Clone)]
@@ -240,7 +140,7 @@ pub struct Context {
     line: u32,
 }
 
-// TODO: When filtering we can pass both Record and RecordBuf. That's why we need a trait to union
+// TODO: When filtering we can pass both Record and RecordBuf. That's why we need a trait to unite
 // them.
 #[derive(Debug)]
 pub struct Record<'a> {
