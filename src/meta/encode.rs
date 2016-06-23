@@ -4,7 +4,8 @@
 //! with logging meta information (also known as attributes). The most code part of this module is
 //! the `Encode` trait that every meta information type should implement to be able properly
 //! encoded into bytes.
-//! There are common implementations for well-known types, but you are free to extend them
+//! There are common implementations for well-known types, but you are free to extend them for your
+//! own types.
 
 use std::borrow::Cow;
 use std::fmt::Debug;
