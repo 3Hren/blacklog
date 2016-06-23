@@ -118,3 +118,20 @@ impl<W: Write> Encoder for W {
         write!(self, "{}", value)
     }
 }
+
+
+#[cfg(test)]
+mod tests {
+    use std::io::Write;
+
+    use super::Encoder;
+
+    #[test]
+    fn encode_true() {
+        let mut wr = Vec::new();
+
+        wr.encode_bool(true).unwrap();
+
+        assert_eq!("true".as_bytes(), &wr[..]);
+    }
+}
