@@ -16,13 +16,9 @@ pub trait Encode : Debug + Send + Sync {
     fn encode(&self, encoder: &mut Encoder) -> Result<(), Error>;
 }
 
-pub trait ToEncodeBuf {
-    fn to_encode_buf(&self) -> Box<EncodeBuf>;
+pub trait ToEncodeBox {
+    fn to_encode_buf(&self) -> Box<Encode>;
 }
-
-pub trait EncodeBuf : Encode {}
-
-impl<T: Encode> EncodeBuf for T {}
 
 pub trait Encoder {
     fn encode_bool(&mut self, value: bool) -> Result<(), Error>;
@@ -36,8 +32,8 @@ impl Encode for bool {
     }
 }
 
-impl ToEncodeBuf for bool {
-    fn to_encode_buf(&self) -> Box<EncodeBuf> {
+impl ToEncodeBox for bool {
+    fn to_encode_buf(&self) -> Box<Encode> {
         box self.to_owned()
     }
 }
@@ -48,8 +44,8 @@ impl Encode for u64 {
     }
 }
 
-impl ToEncodeBuf for u64 {
-    fn to_encode_buf(&self) -> Box<EncodeBuf> {
+impl ToEncodeBox for u64 {
+    fn to_encode_buf(&self) -> Box<Encode> {
         box self.to_owned()
     }
 }
@@ -60,8 +56,8 @@ impl Encode for &'static str {
     }
 }
 
-impl ToEncodeBuf for &'static str {
-    fn to_encode_buf(&self) -> Box<EncodeBuf> {
+impl ToEncodeBox for &'static str {
+    fn to_encode_buf(&self) -> Box<Encode> {
         // box self.to_owned()
         box Cow::Borrowed(*self)
     }
@@ -73,8 +69,8 @@ impl Encode for str {
     }
 }
 
-impl ToEncodeBuf for str {
-    fn to_encode_buf(&self) -> Box<EncodeBuf> {
+impl ToEncodeBox for str {
+    fn to_encode_buf(&self) -> Box<Encode> {
         box self.to_owned()
     }
 }
@@ -86,8 +82,8 @@ impl<'a> Encode for Cow<'a, str> {
     }
 }
 
-impl<'a> ToEncodeBuf for Cow<'a, str> {
-    fn to_encode_buf(&self) -> Box<EncodeBuf> {
+impl<'a> ToEncodeBox for Cow<'a, str> {
+    fn to_encode_buf(&self) -> Box<Encode> {
         unimplemented!()
         // box self.to_owned()
     }
@@ -99,8 +95,8 @@ impl Encode for String {
     }
 }
 
-impl ToEncodeBuf for String {
-    fn to_encode_buf(&self) -> Box<EncodeBuf> {
+impl ToEncodeBox for String {
+    fn to_encode_buf(&self) -> Box<Encode> {
         box self.to_owned()
     }
 }
@@ -118,7 +114,6 @@ impl<W: Write> Encoder for W {
         write!(self, "{}", value)
     }
 }
-
 
 #[cfg(test)]
 mod tests {

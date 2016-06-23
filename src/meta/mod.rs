@@ -13,7 +13,7 @@ use chrono::{DateTime, UTC};
 
 use Severity;
 
-use self::encode::{Encoder, EncodeBuf, ToEncodeBuf};
+use self::encode::{Encoder, ToEncodeBox};
 
 #[derive(Clone)]
 pub struct Lazy<F: Fn() -> E + Send + Sync + 'static, E: Encode>(Arc<Box<F>>);
@@ -45,11 +45,11 @@ impl<F, E> Encode for Lazy<F, E>
     }
 }
 
-impl<E, F> ToEncodeBuf for Lazy<F, E>
+impl<E, F> ToEncodeBox for Lazy<F, E>
     where F: Fn() -> E + Send + Sync + 'static,
           E: Encode + 'static
 {
-    fn to_encode_buf(&self) -> Box<EncodeBuf> {
+    fn to_encode_buf(&self) -> Box<Encode> {
         box Lazy(self.0.clone())
     }
 }
@@ -57,9 +57,9 @@ impl<E, F> ToEncodeBuf for Lazy<F, E>
 
 pub type Error = ::std::io::Error;
 
-pub trait Encode2 : Encode + ToEncodeBuf {}
+pub trait Encode2 : Encode + ToEncodeBox {}
 
-impl<T: Encode + ToEncodeBuf> Encode2 for T {}
+impl<T: Encode + ToEncodeBox> Encode2 for T {}
 
 #[derive(Debug, Copy, Clone)]
 pub struct Meta<'a> {
@@ -98,11 +98,11 @@ impl<'a> MetaList<'a> {
 #[derive(Debug)]
 pub struct MetaBuf {
     name: &'static str,
-    value: Box<EncodeBuf>,
+    value: Box<Encode>,
 }
 
 impl MetaBuf {
-    fn new(name: &'static str, value: Box<EncodeBuf>) -> MetaBuf {
+    fn new(name: &'static str, value: Box<Encode>) -> MetaBuf {
         MetaBuf {
             name: name,
             value: value,
