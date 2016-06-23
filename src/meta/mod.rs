@@ -297,14 +297,17 @@ struct SomeHandler {
 impl SomeHandler {
     fn handle_<'a>(&self, rec: &mut Record<'a>, mutants: &[Box<Mutant>]) {
         println!("{:?}: {:?}", mutants.len(), rec);
-        if mutants.is_empty() {
-            let mut wr: Vec<u8> = Vec::new();
-            // self.layout.format(rec, &mut wr);
-        } else {
-            let mutant = &mutants[0];
-            mutant.mutate(rec, &|rec| {
-                self.handle_(rec, &mutants[1..])
-            })
+
+        match mutants.iter().next() {
+            Some(mutant) => {
+                mutant.mutate(rec, &|rec| {
+                    self.handle_(rec, &mutants[1..])
+                })
+            }
+            None => {
+                let mut wr: Vec<u8> = Vec::new();
+                // self.layout.format(rec, &mut wr);
+            }
         }
     }
 }
