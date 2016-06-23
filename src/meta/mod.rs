@@ -164,12 +164,12 @@ pub struct Context {
 
 // TODO: When filtering we can pass both Record and RecordBuf. That's why we need a trait to unite
 // them.
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone)]
 pub struct Record<'a> {
     timestamp: DateTime<UTC>, // TODO: Consumes about 25ns. Also it may be useful to obtain local time.
     severity: Severity,
     context: Context,
-    format: Arguments<'a>,
+    format: Arguments<'a>, // TODO: enum Message { Ready(&'str), Prepared(Arguments<'a>) }.
     meta: &'a MetaList<'a>,
 }
 
@@ -233,11 +233,13 @@ macro_rules! log (
     }};
 );
 
-pub trait Logger {
+pub trait Logger : Send {
     fn log<'a>(&self, record: &Record<'a>);
 }
 
-trait Handler : Send + Sync {}
+trait Handler : Send + Sync {
+    fn handle(&self, rec: &mut Record);
+}
 
 #[derive(Clone)]
 struct SyncLogger {
@@ -266,6 +268,53 @@ impl SyncLogger {
     }
 }
 
+trait Mutant : Send + Sync {
+    fn mutate(&self, rec: &mut Record, f: &Fn(&mut Record));
+}
+
+struct FalloutMutant;
+
+impl FalloutMutant {
+    fn mutate(&self, rec: &mut Record, f: &Fn(&mut Record)) {
+        let v = 42;
+        let m = &[Meta::new("a1", &v)];
+        let meta = MetaList::next(m, Some(rec.meta));
+        let mut rec2 = *rec;
+        rec2.meta = &meta;
+
+        f(&mut rec2)
+    }
+}
+
+trait Layout {}
+
+struct SomeHandler {
+    // layout: Box<Layout>,
+    mutants: Arc<Vec<Box<Mutant>>>,
+    // appenders: Vec<Box<Appender>>,
+}
+
+impl SomeHandler {
+    fn handle_<'a>(&self, rec: &mut Record<'a>, mutants: &[Box<Mutant>]) {
+        println!("{:?}: {:?}", mutants.len(), rec);
+        if mutants.is_empty() {
+            let mut wr: Vec<u8> = Vec::new();
+            // self.layout.format(rec, &mut wr);
+        } else {
+            let mutant = &mutants[0];
+            mutant.mutate(rec, &|rec| {
+                self.handle_(rec, &mutants[1..])
+            })
+        }
+    }
+}
+
+impl Handler for SomeHandler {
+    fn handle<'a>(&self, rec: &mut Record<'a>) {
+        self.handle_(rec, &self.mutants[..])
+    }
+}
+
 impl Logger for SyncLogger {
     fn log<'a>(&self, record: &Record<'a>) {
         if record.severity >= self.severity.load(Ordering::Relaxed) {
@@ -274,7 +323,11 @@ impl Logger for SyncLogger {
             match filter.filter(record) {
                 FilterAction::Deny => {}
                 FilterAction::Accept | FilterAction::Neutral => {
-                    for handler in self.handlers.iter() {}
+                    for handler in self.handlers.iter() {
+                        // copy record, make mut.
+                        // add new meta.
+                        // mutate(possible reset meta?)
+                    }
                     // record.activate().
                     // .
                 }
