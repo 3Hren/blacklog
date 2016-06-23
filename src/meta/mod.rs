@@ -54,6 +54,28 @@ impl<E, F> ToEncodeBox for Lazy<F, E>
     }
 }
 
+enum FilterAction {
+    Deny,
+    Accept,
+    Neutral,
+}
+
+/// Filters are responsible for filtering logging events.
+///
+/// # Note
+///
+/// All filters must be satisfy Sync trait to be safely usable from multiple threads.
+trait Filter : Send + Sync {
+    fn filter<'a>(&self, rec: &Record<'a>) -> FilterAction;
+}
+
+struct NullFilter;
+
+impl Filter for NullFilter {
+    fn filter<'a>(&self, _rec: &Record<'a>) -> FilterAction {
+        FilterAction::Neutral
+    }
+}
 
 pub type Error = ::std::io::Error;
 
@@ -173,63 +195,6 @@ impl<'a> From<&'a Record<'a>> for RecordBuf {
     }
 }
 
-#[derive(Debug)]
-enum Event {
-    Record(RecordBuf),
-    // Reset(Vec<Handler>),
-    // Filter(Filter),
-    Shutdown,
-}
-
-struct Inner {
-    severity: AtomicIsize,
-    tx: Mutex<mpsc::Sender<Event>>,
-    thread: Option<JoinHandle<()>>,
-}
-
-impl Inner {
-    fn new(tx: mpsc::Sender<Event>, rx: mpsc::Receiver<Event>) -> Inner {
-        let thread = thread::spawn(move || {
-            for event in rx {
-                match event {
-                    Event::Record(rec) => {
-                        println!("{:?}", rec);
-                    }
-                    Event::Shutdown => break,
-                }
-            }
-        });
-
-        Inner {
-            severity: AtomicIsize::new(0),
-            tx: Mutex::new(tx),
-            thread: Some(thread),
-        }
-    }
-}
-
-impl Drop for Inner {
-    fn drop(&mut self) {
-        self.tx.lock().unwrap().send(Event::Shutdown).unwrap();
-        self.thread.take().unwrap().join().unwrap();
-    }
-}
-
-pub trait Logger {
-    fn log<'a>(&self, record: &Record<'a>);
-}
-
-#[derive(Clone)]
-pub struct AsyncLogger {
-    tx: mpsc::Sender<Event>,
-    inner: Arc<Inner>,
-}
-
-struct Scope<'a, F: FnOnce() -> &'static str> {
-    logger: &'a Logger,
-    f: F,
-}
-
 #[macro_export]
 macro_rules! log (
     ($log:ident, $sev:expr, $fmt:expr, [$($args:tt)*], {$($name:ident: $val:expr,)*}) => {{
@@ -268,11 +233,102 @@ macro_rules! log (
     }};
 );
 
-impl<'a, F: FnOnce() -> &'static str> Drop for Scope<'a, F> {
-    fn drop(&mut self) {
-        let l = &self.logger;
-        log!(l, 42, "fuck you");
+pub trait Logger {
+    fn log<'a>(&self, record: &Record<'a>);
+}
+
+trait Handler : Send + Sync {}
+
+#[derive(Clone)]
+struct SyncLogger {
+    handlers: Arc<Vec<Box<Handler>>>,
+    severity: Arc<AtomicIsize>,
+    filter: Arc<Mutex<Arc<Box<Filter>>>>,
+}
+
+impl SyncLogger {
+    fn new(handlers: Vec<Box<Handler>>) -> SyncLogger {
+        SyncLogger {
+            handlers: Arc::new(handlers),
+            severity: Arc::new(AtomicIsize::new(0)),
+            filter: Arc::new(Mutex::new(Arc::new(box NullFilter))),
+        }
     }
+
+    fn severity(&self, val: Severity) {
+        self.severity.store(val, Ordering::Release);
+    }
+
+    fn filter<F>(&self, filter: F)
+        where F: Filter + 'static
+    {
+        (*self.filter.lock().unwrap()) = Arc::new(box filter);
+    }
+}
+
+impl Logger for SyncLogger {
+    fn log<'a>(&self, record: &Record<'a>) {
+        if record.severity >= self.severity.load(Ordering::Relaxed) {
+            let filter = (*self.filter.lock().unwrap()).clone();
+
+            match filter.filter(record) {
+                FilterAction::Deny => {}
+                FilterAction::Accept | FilterAction::Neutral => {
+                    for handler in self.handlers.iter() {}
+                    // record.activate().
+                    // .
+                }
+            }
+        }
+    }
+}
+
+#[derive(Debug)]
+enum Event {
+    Record(RecordBuf),
+    // Reset(Vec<Handler>),
+    // Filter(Filter),
+    Shutdown,
+}
+
+struct Inner {
+    severity: AtomicIsize,
+    tx: Mutex<mpsc::Sender<Event>>,
+    thread: Option<JoinHandle<()>>,
+}
+
+impl Inner {
+    fn new(tx: mpsc::Sender<Event>, rx: mpsc::Receiver<Event>) -> Inner {
+        let thread = thread::spawn(move || {
+            for event in rx {
+                match event {
+                    Event::Record(rec) => {
+                        // println!("{:?}", rec);
+                    }
+                    Event::Shutdown => break,
+                }
+            }
+        });
+
+        Inner {
+            severity: AtomicIsize::new(0),
+            tx: Mutex::new(tx),
+            thread: Some(thread),
+        }
+    }
+}
+
+impl Drop for Inner {
+    fn drop(&mut self) {
+        self.tx.lock().unwrap().send(Event::Shutdown).unwrap();
+        self.thread.take().unwrap().join().unwrap();
+    }
+}
+
+#[derive(Clone)]
+pub struct AsyncLogger {
+    tx: mpsc::Sender<Event>,
+    inner: Arc<Inner>,
 }
 
 impl AsyncLogger {
@@ -303,17 +359,37 @@ impl Logger for AsyncLogger {
     }
 }
 
+struct Scope<'a, F: FnOnce() -> &'static str> {
+    logger: &'a Logger,
+    f: F,
+}
+
+impl<'a, F: FnOnce() -> &'static str> Drop for Scope<'a, F> {
+    fn drop(&mut self) {
+        let l = &self.logger;
+        log!(l, 42, "fuck you");
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use std::sync::Arc;
 
-    use super::{AsyncLogger, Lazy, Meta, MetaList, Encode};
+    use super::{SyncLogger, AsyncLogger, Lazy, Meta, MetaList, Encode};
 
     #[cfg(feature="benchmark")]
     use test::Bencher;
 
     #[test]
-    fn logger_send() {
+    fn sync_logger_send() {
+        fn checker<T: Send>(_v: T) {}
+
+        let log = SyncLogger::new(vec![]);
+        checker(log.clone());
+    }
+
+    #[test]
+    fn async_logger_send() {
         fn checker<T: Send>(_v: T) {}
 
         let log = AsyncLogger::new();
@@ -382,6 +458,16 @@ mod tests {
 
     #[cfg(feature="benchmark")]
     #[bench]
+    fn bench_log_message_sync(b: &mut Bencher) {
+        let log = SyncLogger::new(vec![]);
+
+        b.iter(|| {
+            log!(log, 0, "file does not exist: /var/www/favicon.ico");
+        });
+    }
+
+    #[cfg(feature="benchmark")]
+    #[bench]
     fn bench_log_message_with_meta1(b: &mut Bencher) {
         let log = AsyncLogger::new();
 
@@ -413,6 +499,23 @@ mod tests {
     #[bench]
     fn bench_log_message_with_format_and_meta6(b: &mut Bencher) {
         let log = AsyncLogger::new();
+
+        b.iter(|| {
+            log!(log, 0, "file does not exist: {}", ["/var/www/favicon.ico"], {
+                flag: true,
+                path1: "/home1",
+                path2: "/home2",
+                path3: "/home3",
+                path4: "/home4",
+                path5: "/home5",
+            });
+        });
+    }
+
+    #[cfg(feature="benchmark")]
+    #[bench]
+    fn bench_log_message_with_format_and_meta6_sync(b: &mut Bencher) {
+        let log = SyncLogger::new(vec![]);
 
         b.iter(|| {
             log!(log, 0, "file does not exist: {}", ["/var/www/favicon.ico"], {
