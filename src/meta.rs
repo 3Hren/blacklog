@@ -217,24 +217,6 @@ impl ToEncodeBuf for String {
     }
 }
 
-// impl<E, F> Encode for Arc<Box<F>>
-//     where E: Encode,
-//           F: Fn() -> E + Send + Sync + 'static
-// {
-//     fn encode(&self, encoder: &mut Encoder) -> Result<(), Error> {
-//         self().encode(encoder)
-//     }
-// }
-
-// impl<E, F> ToEncodeBuf for Arc<Box<F>>
-//     where E: Encode,
-//           F: Fn() -> E + Send + Sync + 'static
-// {
-//     fn to_encode_buf(&self) -> Box<EncodeBuf> {
-//         box self.clone()
-//     }
-// }
-
 impl<W: Write> Encoder for W {
     fn encode_bool(&mut self, value: bool) -> Result<(), Error> {
         write!(self, "{}", value)
@@ -480,7 +462,7 @@ mod tests {
             }
         };
 
-        // Only severity with message.
+        // Only severity, message and meta information.
         log!(log, 0, "file does not exist: /var/www/favicon.ico", {
             lazy: Lazy::new(move || { format!("lazy message of {}", val) }),
             lazy: Lazy::new(move || val ),
