@@ -10,7 +10,7 @@ quick_error! {
         Io(err: ::std::io::Error) {
             from()
         }
-        AttributeNotFound {}
+        MetaNotFound {}
     }
 }
 

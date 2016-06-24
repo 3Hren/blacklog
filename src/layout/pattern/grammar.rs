@@ -24,9 +24,9 @@ use super::{Align, Key, SeverityType, TimestampType, Timezone, Token, OPENED_BRA
 expression -> Vec<Token>
     = (format / text)+
 text -> Token
-    = "{{" { Token::Literal(OPENED_BRACE.into()) }
-    / "}}" { Token::Literal(CLOSED_BRACE.into()) }
-    / [^{}]+ { Token::Literal(match_str.into()) }
+    = "{{" { Token::Piece(OPENED_BRACE.into()) }
+    / "}}" { Token::Piece(CLOSED_BRACE.into()) }
+    / [^{}]+ { Token::Piece(match_str.into()) }
 format -> Token
     = "{" "message" "}" { Token::Message }
     / "{" "message:" fill:fill? align:align? width:width? "}" {
@@ -135,17 +135,41 @@ pub enum TimestampType {
     Utc(String),
     Local(String),
 }
-//
-// pub struct FillSpec {
-//     fill: char,
-//     align: Align,
-//     width: usize,
-// }
+
+/// Enum of alignments which are supported.
+#[derive(Debug, Copy, Clone, PartialEq)]
+pub enum Alignment {
+    /// The value will be aligned to the left.
+    AlignLeft,
+    /// The value will be aligned to the right.
+    AlignRight,
+    /// The value will be aligned in the center.
+    AlignCenter,
+}
+
+/// Specification for the formatting of an argument in the format string.
+#[derive(Debug, Copy, Clone, PartialEq)]
+pub struct FormatSpec<T> {
+    /// Optionally specified character to fill alignment with.
+    pub fill: Option<char>,
+    /// Optionally specified alignment.
+    pub align: Alignment,
+    /// Packed version of various flags provided.
+    pub flags: u32,
+    /// The integer precision to use.
+    pub precision: u32,
+    /// The string width requested for the resulting format.
+    pub width: u32,
+    /// The descriptor representing the format desired for this argument.
+    pub ty: T,
+}
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Token {
-    /// Piece of pattern between placeholders.
-    Literal(String),
+    /// Portion of the format string which represents the next part to emit.
+    Piece(String),
+    /// Logging message.
+    Message_(Option<FormatSpec<()>>),
     /// Message placeholder without spec to avoid unnecessary instructions.
     Message,
     /// Message placeholder with spec.
@@ -159,14 +183,24 @@ pub enum Token {
     /// Timestamp placeholder with spec.
     TimestampExt { fill: char, align: Align, width: usize, ty: TimestampType },
     ///
-    // TimestampNum(Option<FillSpec>),
-    // TimestampUtc(Option<String>, Option<FillSpec>),
-    // TimestampLocal(Option<String>, Option<FillSpec>),
-    // ProcessId(Option<FillSpec>),
-    // ProcessName(Option<FillSpec>),
+    // Message
+    // MessageExt(fill, align, width), тип только строка
+    // Severity(ty) where ty ::= d|s, для d можно флаги и точность
+    // SeverityExt(fill, align, width, ty) where ty ::= d|s
+    // Timestamp(ty) where ty ::= d|u|l; u,l Option<Pattern>
+    // TimestampExt(fill, align, width, ty) where ty ::= d|u|l
+    // Process(Option<Spec>, ty) where ty ::= d|s
+    // Thread(Option<Spec>, ty) where ty ::= d|s
+    // Module
+    // Line
+    // TODO: TimestampNum(Option<FillSpec>),
+    // TODO: TimestampUtc(Option<String>, Option<FillSpec>),
+    // TODO: TimestampLocal(Option<String>, Option<FillSpec>),
+    // TODO: ProcessId(Option<FillSpec>),
+    // TODO: ProcessName(Option<FillSpec>),
     // TODO: types: 's', 'd' with '#' - thread writer, otherwise thread creator of record.
-    // ThreadId(Option<FillSpec>),
-    // ThreadName(Option<FillSpec>),
+    // TODO: ThreadId(Option<FillSpec>),
+    // TODO: ThreadName(Option<FillSpec>),
     Placeholder(String, Key),
 }
 
@@ -179,10 +213,10 @@ mod tests {
     use super::{parse, Align, Key, SeverityType, TimestampType, Token};
 
     #[test]
-    fn literal() {
+    fn piece() {
         let tokens = parse("hello").unwrap();
 
-        assert_eq!(vec![Token::Literal("hello".into())], tokens);
+        assert_eq!(vec![Token::Piece("hello".into())], tokens);
     }
 
     #[test]

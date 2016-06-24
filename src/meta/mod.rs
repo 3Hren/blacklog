@@ -6,12 +6,12 @@ use std::borrow::Cow;
 use std::fmt::{Arguments, Formatter, Debug};
 use std::io::Write;
 use std::sync::{mpsc, Arc, Mutex};
-use std::sync::atomic::{AtomicIsize, Ordering};
+use std::sync::atomic::{AtomicI32, Ordering};
 use std::thread::{self, JoinHandle};
 
-use chrono::{DateTime, UTC};
+use {Record, FrozenRecord, Severity};
 
-use Severity;
+use super::record::RecordBuf;
 
 use self::encode::{Encoder, ToEncodeBox};
 
@@ -90,6 +90,7 @@ pub struct Meta<'a> {
 }
 
 impl<'a> Meta<'a> {
+    #[inline]
     pub fn new(name: &'static str, value: &'a Encode2) -> Meta<'a> {
         Meta {
             name: name,
@@ -105,6 +106,7 @@ pub struct MetaList<'a> {
 }
 
 impl<'a> MetaList<'a> {
+    #[inline]
     pub fn new(meta: &'a [Meta<'a>]) -> MetaList<'a> {
         MetaList::next(meta, None)
     }
@@ -153,71 +155,14 @@ impl<'a> From<&'a MetaList<'a>> for Vec<MetaBuf> {
     }
 }
 
-// TODO: impl Iterator<Item=Meta> for RecordIter<'a> {}
-
-#[derive(Debug, Copy, Clone)]
-pub struct Context {
-    thread: usize,
-    module: &'static str,
-    line: u32,
-}
-
-// TODO: When filtering we can pass both Record and RecordBuf. That's why we need a trait to unite
-// them.
-#[derive(Debug, Copy, Clone)]
-pub struct Record<'a> {
-    timestamp: DateTime<UTC>, // TODO: Consumes about 25ns. Also it may be useful to obtain local time.
-    severity: Severity,
-    context: Context,
-    format: Arguments<'a>, // TODO: enum Message { Ready(&'str), Prepared(Arguments<'a>) }.
-    meta: &'a MetaList<'a>,
-}
-
-#[derive(Debug)]
-pub struct RecordBuf {
-    timestamp: DateTime<UTC>,
-    severity: Severity,
-    context: Context,
-    message: String,
-    /// Ordered from recently added.
-    meta: Vec<MetaBuf>,
-}
-
-impl<'a> From<&'a Record<'a>> for RecordBuf {
-    fn from(val: &'a Record<'a>) -> RecordBuf {
-        RecordBuf {
-            timestamp: val.timestamp,
-            severity: val.severity,
-            context: val.context,
-            message: format!("{}", val.format),
-            meta: From::from(val.meta),
-        }
-    }
-}
-
 #[macro_export]
 macro_rules! log (
     ($log:ident, $sev:expr, $fmt:expr, [$($args:tt)*], {$($name:ident: $val:expr,)*}) => {{
-        extern crate chrono;
-
-        use chrono::UTC;
-        use $crate::{Context, Logger, Record};
-
-        let context = Context {
-            thread: $crate::thread::id(),
-            module: module_path!(),
-            line: line!(),
-        };
-
-        $log.log(&Record {
-            timestamp: UTC::now(),
-            severity: $sev,
-            context: context,
-            format: format_args!($fmt, $($args)*),
-            meta: &$crate::MetaList::new(&[
+        $log.log(&$crate::Record::new($sev, line!(), module_path!(), format_args!($fmt, $($args)*),
+            &$crate::MetaList::new(&[
                 $($crate::Meta::new(stringify!($name), &$val)),*
-            ]),
-        });
+            ])
+        ));
     }};
     ($log:ident, $sev:expr, $fmt:expr, {$($name:ident: $val:expr,)*}) => {{
         log!($log, $sev, $fmt, [], {$($name: $val,)*})
@@ -234,7 +179,7 @@ macro_rules! log (
 );
 
 pub trait Logger : Send {
-    fn log<'a>(&self, record: &Record<'a>);
+    fn log<'a>(&self, record: &FrozenRecord<'a>);
 }
 
 trait Handler : Send + Sync {
@@ -244,7 +189,7 @@ trait Handler : Send + Sync {
 #[derive(Clone)]
 struct SyncLogger {
     handlers: Arc<Vec<Box<Handler>>>,
-    severity: Arc<AtomicIsize>,
+    severity: Arc<AtomicI32>,
     filter: Arc<Mutex<Arc<Box<Filter>>>>,
 }
 
@@ -252,7 +197,7 @@ impl SyncLogger {
     fn new(handlers: Vec<Box<Handler>>) -> SyncLogger {
         SyncLogger {
             handlers: Arc::new(handlers),
-            severity: Arc::new(AtomicIsize::new(0)),
+            severity: Arc::new(AtomicI32::new(0)),
             filter: Arc::new(Mutex::new(Arc::new(box NullFilter))),
         }
     }
@@ -278,11 +223,12 @@ impl FalloutMutant {
     fn mutate(&self, rec: &mut Record, f: &Fn(&mut Record)) {
         let v = 42;
         let m = &[Meta::new("a1", &v)];
-        let meta = MetaList::next(m, Some(rec.meta));
-        let mut rec2 = *rec;
-        rec2.meta = &meta;
+        // let meta = MetaList::next(m, Some(rec.meta));
+        // let mut rec2 = *rec;
+        // rec2.meta = &meta;
 
-        f(&mut rec2)
+        // f(&mut rec2)
+        f(rec)
     }
 }
 
@@ -319,11 +265,12 @@ impl Handler for SomeHandler {
 }
 
 impl Logger for SyncLogger {
-    fn log<'a>(&self, record: &Record<'a>) {
-        if record.severity >= self.severity.load(Ordering::Relaxed) {
+    fn log<'a>(&self, record: &FrozenRecord<'a>) {
+        if record.severity() >= self.severity.load(Ordering::Relaxed) {
+            let record = record.activate();
             let filter = (*self.filter.lock().unwrap()).clone();
 
-            match filter.filter(record) {
+            match filter.filter(&record) {
                 FilterAction::Deny => {}
                 FilterAction::Accept | FilterAction::Neutral => {
                     for handler in self.handlers.iter() {
@@ -348,7 +295,7 @@ enum Event {
 }
 
 struct Inner {
-    severity: AtomicIsize,
+    severity: AtomicI32,
     tx: Mutex<mpsc::Sender<Event>>,
     thread: Option<JoinHandle<()>>,
 }
@@ -367,7 +314,7 @@ impl Inner {
         });
 
         Inner {
-            severity: AtomicIsize::new(0),
+            severity: AtomicI32::new(0),
             tx: Mutex::new(tx),
             thread: Some(thread),
         }
@@ -406,9 +353,9 @@ impl AsyncLogger {
 }
 
 impl Logger for AsyncLogger {
-    fn log<'a>(&self, record: &Record<'a>) {
-        if record.severity >= self.inner.severity.load(Ordering::Relaxed) {
-            if let Err(..) = self.tx.send(Event::Record(RecordBuf::from(record))) {
+    fn log<'a>(&self, record: &FrozenRecord<'a>) {
+        if record.severity() >= self.inner.severity.load(Ordering::Relaxed) {
+            if let Err(..) = self.tx.send(Event::Record(RecordBuf::from(record.activate()))) {
                 // TODO: Return error.
             }
         }
@@ -431,7 +378,7 @@ impl<'a, F: FnOnce() -> &'static str> Drop for Scope<'a, F> {
 mod tests {
     use std::sync::Arc;
 
-    use super::{SyncLogger, AsyncLogger, Lazy, Meta, MetaList, Encode};
+    use super::{SyncLogger, AsyncLogger, Lazy, Logger, Meta, MetaList, Encode};
 
     #[cfg(feature="benchmark")]
     use test::Bencher;
@@ -450,6 +397,30 @@ mod tests {
 
         let log = AsyncLogger::new();
         checker(log.clone());
+    }
+
+    #[test]
+    fn log_with_custom_enum() {
+        enum Severity {
+            Debug,
+            Info,
+            Warn,
+            Error,
+        }
+
+        impl From<Severity> for i32 {
+            fn from(val: Severity) -> i32 {
+                match val {
+                    Severity::Debug => 0,
+                    Severity::Info  => 1,
+                    Severity::Warn  => 2,
+                    Severity::Error => 3,
+                }
+            }
+        }
+        let log = SyncLogger::new(vec![]);
+
+        log!(log, Severity::Debug, "file does not exist: /var/www/favicon.ico");
     }
 
     #[test]
@@ -575,6 +546,23 @@ mod tests {
 
         b.iter(|| {
             log!(log, 0, "file does not exist: {}", ["/var/www/favicon.ico"], {
+                flag: true,
+                path1: "/home1",
+                path2: "/home2",
+                path3: "/home3",
+                path4: "/home4",
+                path5: "/home5",
+            });
+        });
+    }
+
+    #[cfg(feature="benchmark")]
+    #[bench]
+    fn bench_log_message_with_format_and_meta6_reject_sync(b: &mut Bencher) {
+        let log = SyncLogger::new(vec![]);
+
+        b.iter(|| {
+            log!(log, -1, "file does not exist: {}", ["/var/www/favicon.ico"], {
                 flag: true,
                 path1: "/home1",
                 path2: "/home2",

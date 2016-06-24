@@ -1,6 +1,7 @@
 #![cfg_attr(feature="benchmark", feature(test))]
 
 #![feature(box_syntax)]
+#![feature(integer_atomics)]
 #![feature(plugin)]
 #![feature(question_mark)]
 
@@ -13,11 +14,13 @@ extern crate chrono;
 #[cfg(feature="benchmark")] extern crate test;
 
 // pub mod appender;
-// pub mod layout;
+pub mod layout;
 mod severity;
 mod meta;
 mod thread;
+mod record;
 
 pub use self::severity::Severity;
 pub use self::meta::Encode;
-pub use self::meta::{Logger, Meta, MetaList, Record, Context};
+pub use self::meta::{Logger, Meta, MetaList};
+pub use self::record::{Record, FrozenRecord};
