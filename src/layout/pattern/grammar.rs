@@ -96,7 +96,6 @@ pub enum Token {
     // Process(Option<Spec>, ProcessType)
     // Thread(Option<Spec>, ThreadType)
     Meta(MetaName, Option<FormatSpec>),
-    // Meta(String[name], Option<Spec>)
     // MetaList(Option<Spec>, String[prefix], String[suffix], char[separator], String[pattern], Filter)
 }
 
