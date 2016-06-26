@@ -1,9 +1,9 @@
 use std::io::Write;
 
-use super::{Error, Layout};
+use {Record, Severity};
+use registry::Config;
 
-use Record;
-use Severity;
+use super::{Error, Layout, LayoutFactory};
 
 mod grammar;
 
@@ -38,7 +38,7 @@ fn padded(fill: char, align: Alignment, width: usize, data: &[u8], wr: &mut Writ
     Ok(())
 }
 
-pub trait SeverityMapping {
+pub trait SeverityMapping : Send + Sync {
     fn map(&self, severity: Severity, fill: char, align: Alignment, width: usize, wr: &mut Write) ->
         Result<(), ::std::io::Error>;
 }
@@ -54,7 +54,7 @@ impl SeverityMapping for DefaultSeverityMapping {
     }
 }
 
-pub struct PatternLayout<F: SeverityMapping> {
+pub struct PatternLayout<F: SeverityMapping = DefaultSeverityMapping> {
     tokens: Vec<Token>,
     sevmap: F,
 }
@@ -118,6 +118,24 @@ impl<F: SeverityMapping> Layout for PatternLayout<F> {
         }
 
         Ok(())
+    }
+}
+
+pub struct PatternLayoutFactory;
+
+impl LayoutFactory for PatternLayoutFactory {
+    fn ty() -> &'static str {
+        "pattern"
+    }
+
+    fn from(&self, cfg: &Config) -> Result<Box<Layout>, Box<::std::error::Error>> {
+        let pattern = cfg.find("pattern")
+            .ok_or(r#"field "pattern" is required"#)?
+            .as_string()
+            .ok_or(r#"field "pattern" must be a string"#)?;
+        let res = box PatternLayout::new(pattern)?;
+
+        Ok(res)
     }
 }
 

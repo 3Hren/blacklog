@@ -16,12 +16,14 @@ license = "MIT"
 # Pattern Layout grammar parsing.
 peg = "0.3"
 # Reduces error enum creation boilerplate.
-quick-error = "^1.1"
+quick-error = "1.1"
 # Datetime formatting.
 chrono = "0.2"
+# Configuration from generic source.
+serde_json = "0.7"
 
 [target.'cfg(unix)'.dependencies]
-libc = "^0.2"
+libc = "0.2"
 
 [features]
 # Compile unit-benchmarks.
