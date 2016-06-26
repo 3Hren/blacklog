@@ -38,14 +38,14 @@ fn padded(fill: char, align: Alignment, width: usize, data: &[u8], wr: &mut Writ
     Ok(())
 }
 
-pub trait SeverityMapping : Send + Sync {
+pub trait SevMap : Send + Sync {
     fn map(&self, severity: Severity, fill: char, align: Alignment, width: usize, wr: &mut Write) ->
         Result<(), ::std::io::Error>;
 }
 
-struct DefaultSeverityMapping;
+struct DefaultSevMap;
 
-impl SeverityMapping for DefaultSeverityMapping {
+impl SevMap for DefaultSevMap {
     fn map(&self, severity: Severity, fill: char, align: Alignment, width: usize, wr: &mut Write) ->
         Result<(), ::std::io::Error>
     {
@@ -54,18 +54,18 @@ impl SeverityMapping for DefaultSeverityMapping {
     }
 }
 
-pub struct PatternLayout<F: SeverityMapping> {
+pub struct PatternLayout<F: SevMap> {
     tokens: Vec<Token>,
     sevmap: F,
 }
 
-impl PatternLayout<DefaultSeverityMapping> {
-    pub fn new(pattern: &str) -> Result<PatternLayout<DefaultSeverityMapping>, ParseError> {
-        PatternLayout::with(pattern, DefaultSeverityMapping)
+impl PatternLayout<DefaultSevMap> {
+    pub fn new(pattern: &str) -> Result<PatternLayout<DefaultSevMap>, ParseError> {
+        PatternLayout::with(pattern, DefaultSevMap)
     }
 }
 
-impl<F: SeverityMapping> PatternLayout<F> {
+impl<F: SevMap> PatternLayout<F> {
     fn with(pattern: &str, sevmap: F) -> Result<PatternLayout<F>, ParseError> {
         let layout = PatternLayout {
             tokens: parse(pattern)?,
@@ -76,7 +76,7 @@ impl<F: SeverityMapping> PatternLayout<F> {
     }
 }
 
-impl<F: SeverityMapping> Layout for PatternLayout<F> {
+impl<F: SevMap> Layout for PatternLayout<F> {
     fn format(&self, rec: &Record, wr: &mut Write) -> Result<(), Error> {
         for token in &self.tokens {
             match *token {
@@ -149,7 +149,7 @@ mod tests {
 
     use {MetaList, Record, Severity};
     use layout::Layout;
-    use layout::pattern::{PatternLayout, SeverityMapping};
+    use layout::pattern::{PatternLayout, SevMap};
     use layout::pattern::grammar::Alignment;
 
     // TODO: Seems quite required for other testing modules. Maybe move into `record` module?
@@ -279,7 +279,7 @@ mod tests {
     fn severity_with_mapping() {
         struct Mapping;
 
-        impl SeverityMapping for Mapping {
+        impl SevMap for Mapping {
             fn map(&self, severity: Severity, fill: char, align: Alignment, width: usize, wr: &mut Write) ->
                 Result<(), ::std::io::Error>
             {
@@ -303,7 +303,7 @@ mod tests {
     fn severity_num_with_mapping() {
         struct Mapping;
 
-        impl SeverityMapping for Mapping {
+        impl SevMap for Mapping {
             fn map(&self, severity: Severity, fill: char, align: Alignment, width: usize, wr: &mut Write) ->
                 Result<(), ::std::io::Error>
             {
