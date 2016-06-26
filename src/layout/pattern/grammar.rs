@@ -17,6 +17,18 @@ pub enum SeverityType {
     String,
 }
 
+#[derive(Debug, Copy, Clone, PartialEq)]
+pub enum ThreadType {
+    Num,
+    String,
+}
+
+#[derive(Debug, Copy, Clone, PartialEq)]
+pub enum ProcessType {
+    Num,
+    String,
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub enum Timezone {
     Utc,
@@ -72,9 +84,12 @@ pub enum Token {
     TimestampNum(Option<FormatSpec>),
     /// The line number on which the logging event was created.
     Line(Option<FormatSpec>),
-    // Module(Option<Spec>)
-    // Process(Option<Spec>, ProcessType)
-    // Thread(Option<Spec>, ThreadType)
+    /// The module path where the logging event was created.
+    Module(Option<FormatSpec>),
+    /// Thread id or its name depending on type specified.
+    Thread(Option<FormatSpec>, ThreadType),
+    /// Process id (aka PID) or its name depending on type specified.
+    Process(Option<FormatSpec>, ProcessType),
     Meta(MetaName, Option<FormatSpec>),
     // MetaList(Option<Spec>, String[prefix], String[suffix], char[separator], String[pattern], Filter)
 }
@@ -340,6 +355,27 @@ mod tests {
             width: 20,
         };
         assert_eq!(vec![Token::Line(Some(spec))], tokens);
+    }
+
+    #[test]
+    fn module() {
+        let tokens = parse("{module}").unwrap();
+
+        assert_eq!(vec![Token::Module(None)], tokens);
+    }
+
+    #[test]
+    fn module_spec() {
+        let tokens = parse("{module:/^20.16}").unwrap();
+
+        let spec = FormatSpec {
+            fill: '/',
+            align: Alignment::AlignCenter,
+            flags: 0,
+            precision: Some(16),
+            width: 20,
+        };
+        assert_eq!(vec![Token::Module(Some(spec))], tokens);
     }
 
     // #[test]
