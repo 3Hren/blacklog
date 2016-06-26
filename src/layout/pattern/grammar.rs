@@ -31,7 +31,7 @@ format -> Token
     = "{" "message" "}" { Token::Message_(None) }
     / "{" "message:" fill:fill? align:align? width:width? precision:precision? "}" {
         let spec = FormatSpec {
-            fill: fill,
+            fill: fill.unwrap_or(' '),
             align: align.unwrap_or(Alignment::AlignLeft),
             flags: 0,
             precision: precision,
@@ -151,7 +151,7 @@ pub enum Alignment {
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub struct FormatSpec<T> {
     /// Optionally specified character to fill alignment with.
-    pub fill: Option<char>,
+    pub fill: char,
     /// Optionally specified alignment.
     pub align: Alignment,
     /// Packed version of various flags provided.
@@ -235,7 +235,7 @@ mod tests {
         let tokens = parse("{message:.<10.8}").unwrap();
 
         let spec = FormatSpec {
-            fill: Some('.'),
+            fill: '.',
             align: Alignment::AlignLeft,
             flags: 0,
             precision: Some(8),

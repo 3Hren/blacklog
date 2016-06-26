@@ -80,13 +80,14 @@ impl<F: SeverityMapping> Layout for PatternLayout<F> {
     fn format(&self, rec: &Record, wr: &mut Write) -> Result<(), Error> {
         for token in &self.tokens {
             match *token {
-                Token::Piece(ref piece) =>
-                    wr.write_all(piece.as_bytes())?,
+                Token::Piece(ref piece) => {
+                    wr.write_all(piece.as_bytes())?
+                }
                 Token::Message_(None) => {
                     wr.write_all(rec.message().as_bytes())?
                 }
                 Token::Message_(Some(spec)) => {
-                    padded(spec.fill.unwrap_or(' '), spec.align, spec.width, rec.message().as_bytes(), wr)?
+                    padded(spec.fill, spec.align, spec.width, rec.message().as_bytes(), wr)?
                 }
                 Token::Severity { ty: SeverityType::Num } =>
                     wr.write_all(format!("{}", rec.severity()).as_bytes())?,
