@@ -345,13 +345,13 @@ mod tests {
 
     #[test]
     fn line_spec() {
-        let tokens = parse("{line:/^20.16}").unwrap();
+        let tokens = parse("{line:/^20}").unwrap();
 
         let spec = FormatSpec {
             fill: '/',
             align: Alignment::AlignCenter,
             flags: 0,
-            precision: Some(16),
+            precision: None,
             width: 20,
         };
         assert_eq!(vec![Token::Line(Some(spec))], tokens);

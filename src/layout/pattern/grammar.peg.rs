@@ -71,12 +71,12 @@ format -> Token
         Token::Timestamp(Some(spec), pattern.unwrap_or("%+".into()), tz)
     }
     / "{" "line" "}" { Token::Line(None) }
-    / "{" "line:" fill:fill? align:align? width:width? precision:precision? "}" {
+    / "{" "line:" fill:fill? align:align? width:width? "}" {
         let spec = FormatSpec {
             fill: fill.unwrap_or(' '),
             align: align.unwrap_or(Alignment::AlignLeft),
             flags: 0,
-            precision: precision,
+            precision: None,
             width: width.unwrap_or(0),
         };
 
