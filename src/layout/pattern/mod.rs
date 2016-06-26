@@ -7,7 +7,7 @@ use Severity;
 
 mod grammar;
 
-use self::grammar::{parse, Alignment, FormatSpec, ParseError, SeverityType, TimestampType, Token};
+use self::grammar::{parse, Alignment, FormatSpec, ParseError, SeverityType, TimestampType, Timezone, Token};
 
 fn padded(fill: char, align: Alignment, width: usize, data: &[u8], wr: &mut Write) ->
     Result<(), ::std::io::Error>
@@ -103,8 +103,16 @@ impl<F: SeverityMapping> Layout for PatternLayout<F> {
                     // Format all.
                     unimplemented!();
                 }
-                Token::Timestamp { ty: TimestampType::Utc(ref pattern) } =>
-                    wr.write_all(format!("{}", rec.timestamp().format(&pattern)).as_bytes())?,
+                Token::TimestampNum(None) => {
+                    // Format as seconds (or microseconds) elapsed from Unix epoch.
+                    unimplemented!();
+                }
+                Token::Timestamp(None, ref pattern, Timezone::Utc) => {
+                    wr.write_all(format!("{}", rec.timestamp().format(&pattern)).as_bytes())?
+                }
+                Token::Meta(ref name, None) => {
+
+                }
                 _ => unimplemented!(),
             }
         }

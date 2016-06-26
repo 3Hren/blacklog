@@ -17,104 +17,10 @@ pub use self::grammar::{expression, ParseError};
 const OPENED_BRACE: &'static str = "{";
 const CLOSED_BRACE: &'static str = "}";
 
-peg! grammar(r#"
-use super::{Alignment, Key, FormatSpec, SeverityType, TimestampType, Timezone, Token, OPENED_BRACE, CLOSED_BRACE};
-
-#[pub]
-expression -> Vec<Token>
-    = (format / text)+
-text -> Token
-    = "{{" { Token::Piece(OPENED_BRACE.into()) }
-    / "}}" { Token::Piece(CLOSED_BRACE.into()) }
-    / [^{}]+ { Token::Piece(match_str.into()) }
-format -> Token
-    = "{" "message" "}" { Token::Message(None) }
-    / "{" "message:" fill:fill? align:align? width:width? precision:precision? "}" {
-        let spec = FormatSpec {
-            fill: fill.unwrap_or(' '),
-            align: align.unwrap_or(Alignment::AlignLeft),
-            flags: 0,
-            precision: precision,
-            width: width.unwrap_or(0),
-        };
-
-        Token::Message(Some(spec))
-    }
-    / "{" "severity" "}" { Token::Severity(None, SeverityType::String) }
-    / "{" "severity:" "s}" { Token::Severity(None, SeverityType::String) }
-    / "{" "severity:" "d}" { Token::Severity(None, SeverityType::Num) }
-    / "{" "severity:" fill:fill? align:align? width:width? ty:sevty? "}" {
-        let spec = FormatSpec {
-            fill: fill.unwrap_or(' '),
-            align: align.unwrap_or(Alignment::AlignLeft),
-            flags: 0,
-            precision: None,
-            width: width.unwrap_or(0),
-        };
-
-        Token::Severity(Some(spec), ty.unwrap_or(SeverityType::String))
-    }
-    / "{" "timestamp" "}" { Token::Timestamp { ty: TimestampType::Utc("%+".into()) } }
-    / "{" "timestamp:" "d}" { Token::Timestamp { ty: TimestampType::Num } }
-    / "{" "timestamp:" fill:fill? align:align? width:width? "d}" {
-        Token::TimestampExt {
-            fill: fill.unwrap_or(' '),
-            align: align.unwrap_or(Alignment::AlignLeft),
-            width: width.unwrap_or(0),
-            ty: TimestampType::Num,
-        }
-    }
-    / "{" "timestamp:" pattern:strftime? tz:tz "}" {
-        match tz {
-            Timezone::Utc =>
-                Token::Timestamp { ty: TimestampType::Utc(pattern.unwrap_or("%+".into())) },
-            Timezone::Local =>
-                Token::Timestamp { ty: TimestampType::Local(pattern.unwrap_or("%+".into())) },
-        }
-    }
-    / "{" "timestamp:" pattern:strftime? fill:fill? align:align? width:width? tz:tz "}" {
-        let ty = match tz {
-            Timezone::Utc => TimestampType::Utc(pattern.unwrap_or("%+".into())),
-            Timezone::Local => TimestampType::Local(pattern.unwrap_or("%+".into())),
-        };
-
-        Token::TimestampExt {
-            fill: fill.unwrap_or(' '),
-            align: align.unwrap_or(Alignment::AlignLeft),
-            width: width.unwrap_or(0),
-            ty: ty,
-        }
-    }
-    / "{" key:name "}" { Token::Placeholder(match_str[1..match_str.len() - 1].into(), key) }
-fill -> char
-    = . &align { match_str.chars().next().unwrap() }
-align -> Alignment
-    = "<" { Alignment::AlignLeft }
-    / ">" { Alignment::AlignRight }
-    / "^" { Alignment::AlignCenter }
-width -> usize
-    = [0-9]+ { match_str.parse().unwrap() }
-precision -> usize
-    = "." [0-9]+ { match_str[1..].parse().unwrap() }
-sevty -> SeverityType
-    = "d" { SeverityType::Num }
-    / "s" { SeverityType::String }
-tz -> Timezone
-    = "s" { Timezone::Utc }
-    / "l" { Timezone::Local }
-strftime -> String
-    = "{" tchar:tchar* "}" { tchar.into_iter().collect() }
-tchar -> char
-    = "{{" { OPENED_BRACE.chars().next().unwrap() }
-    / "}}" { CLOSED_BRACE.chars().next().unwrap() }
-    / [^{}] { match_str.chars().next().unwrap() }
-name -> Key
-    = [0-9]+ { Key::Id(match_str.parse().expect("expect number")) }
-    / [a-zA-Z][a-zA-Z0-9]* { Key::Name(match_str.into()) }
-"#);
+peg_file! grammar("grammar.peg.rs");
 
 #[derive(Debug, Clone, PartialEq)]
-pub enum Key {
+pub enum MetaName {
     Id(usize),
     Name(String),
 }
@@ -126,7 +32,7 @@ pub enum SeverityType {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-enum Timezone {
+pub enum Timezone {
     Utc,
     Local,
 }
@@ -177,33 +83,21 @@ pub struct FormatSpec {
 pub enum Token {
     /// Portion of the format string which represents the next part to emit.
     Piece(String),
-    /// Log event message with an optional spec.
+    /// Message with an optional spec.
     Message(Option<FormatSpec>),
-    /// Log event severity formatted as either numeric or string with an optional spec.
+    /// Severity formatted as either numeric or string with an optional spec.
     Severity(Option<FormatSpec>, SeverityType),
-    /// Timestamp placeholder without spec.
-    Timestamp { ty: TimestampType },
-    /// Timestamp placeholder with spec.
-    TimestampExt { fill: char, align: Alignment, width: usize, ty: TimestampType },
-    ///
-    // MessageExt(fill, align, width), тип только строка
-    // Severity(ty) where ty ::= d|s, для d можно флаги и точность
-    // SeverityExt(fill, align, width, ty) where ty ::= d|s
-    // Timestamp(ty) where ty ::= d|u|l; u,l Option<Pattern>
-    // TimestampExt(fill, align, width, ty) where ty ::= d|u|l
-    // Process(Option<Spec>, ty) where ty ::= d|s
-    // Thread(Option<Spec>, ty) where ty ::= d|s
-    // Module
-    // Line
-    // TODO: TimestampNum(Option<FillSpec>),
-    // TODO: TimestampUtc(Option<String>, Option<FillSpec>),
-    // TODO: TimestampLocal(Option<String>, Option<FillSpec>),
-    // TODO: ProcessId(Option<FillSpec>),
-    // TODO: ProcessName(Option<FillSpec>),
-    // TODO: types: 's', 'd' with '#' - thread writer, otherwise thread creator of record.
-    // TODO: ThreadId(Option<FillSpec>),
-    // TODO: ThreadName(Option<FillSpec>),
-    Placeholder(String, Key),
+    /// Timestamp representation with a pattern, timezone and optional spec.
+    Timestamp(Option<FormatSpec>, String, Timezone),
+    /// Timestamp as a seconds elapsed from Unix epoch with an optional spec.
+    TimestampNum(Option<FormatSpec>),
+    // Line(Option<Spec>)
+    // Module(Option<Spec>)
+    // Process(Option<Spec>, ProcessType)
+    // Thread(Option<Spec>, ThreadType)
+    Meta(MetaName, Option<FormatSpec>),
+    // Meta(String[name], Option<Spec>)
+    // MetaList(Option<Spec>, String[prefix], String[suffix], char[separator], String[pattern], Filter)
 }
 
 pub fn parse(pattern: &str) -> Result<Vec<Token>, ParseError> {
@@ -212,7 +106,7 @@ pub fn parse(pattern: &str) -> Result<Vec<Token>, ParseError> {
 
 #[cfg(test)]
 mod tests {
-    use super::{parse, Alignment, FormatSpec, Key, SeverityType, TimestampType, Token};
+    use super::*;
 
     #[test]
     fn piece() {
@@ -274,7 +168,6 @@ mod tests {
             precision: None,
             width: 10,
         };
-
         assert_eq!(vec![Token::Severity(Some(spec), SeverityType::String)], tokens);
     }
 
@@ -289,7 +182,6 @@ mod tests {
             precision: None,
             width: 16,
         };
-
         assert_eq!(vec![Token::Severity(Some(spec), SeverityType::String)], tokens);
     }
 
@@ -304,7 +196,6 @@ mod tests {
             precision: None,
             width: 16,
         };
-
         assert_eq!(vec![Token::Severity(Some(spec), SeverityType::Num)], tokens);
     }
 
@@ -319,7 +210,6 @@ mod tests {
             precision: None,
             width: 16,
         };
-
         assert_eq!(vec![Token::Severity(Some(spec), SeverityType::String)], tokens);
     }
 
@@ -327,127 +217,136 @@ mod tests {
     fn timestamp() {
         let tokens = parse("{timestamp}").unwrap();
 
-        assert_eq!(vec![Token::Timestamp { ty: TimestampType::Utc("%+".into()) }], tokens);
+        assert_eq!(vec![Token::Timestamp(None, "%+".into(), Timezone::Utc)], tokens);
     }
 
     #[test]
     fn timestamp_num() {
         let tokens = parse("{timestamp:d}").unwrap();
 
-        assert_eq!(vec![Token::Timestamp { ty: TimestampType::Num }], tokens);
+        assert_eq!(vec![Token::TimestampNum(None)], tokens);
     }
 
     #[test]
     fn timestamp_utc() {
         let tokens = parse("{timestamp:s}").unwrap();
 
-        assert_eq!(vec![Token::Timestamp { ty: TimestampType::Utc("%+".into()) }], tokens);
+        assert_eq!(vec![Token::Timestamp(None, "%+".into(), Timezone::Utc)], tokens);
     }
 
     #[test]
     fn timestamp_local() {
         let tokens = parse("{timestamp:l}").unwrap();
 
-        assert_eq!(vec![Token::Timestamp { ty: TimestampType::Local("%+".into()) }], tokens);
+        assert_eq!(vec![Token::Timestamp(None, "%+".into(), Timezone::Local)], tokens);
     }
 
     #[test]
     fn timestamp_ext_num() {
         let tokens = parse("{timestamp:^20d}").unwrap();
 
-        assert_eq!(vec![
-            Token::TimestampExt {
-                fill: ' ',
-                align: Alignment::AlignCenter,
-                width: 20,
-                ty: TimestampType::Num,
-            }
-        ], tokens);
+        let spec = FormatSpec {
+            fill: ' ',
+            align: Alignment::AlignCenter,
+            flags: 0,
+            precision: None,
+            width: 20,
+        };
+        assert_eq!(vec![Token::TimestampNum(Some(spec))], tokens);
     }
 
     #[test]
     fn timestamp_ext_num_with_fill() {
         let tokens = parse("{timestamp:.<d}").unwrap();
 
-        assert_eq!(vec![
-            Token::TimestampExt {
-                fill: '.',
-                align: Alignment::AlignLeft,
-                width: 0,
-                ty: TimestampType::Num,
-            }
-        ], tokens);
+        let spec = FormatSpec {
+            fill: '.',
+            align: Alignment::AlignLeft,
+            flags: 0,
+            precision: None,
+            width: 0,
+        };
+        assert_eq!(vec![Token::TimestampNum(Some(spec))], tokens);
     }
 
     #[test]
     fn timestamp_with_pattern_utc() {
         let tokens = parse("{timestamp:{%Y-%m-%d}s}").unwrap();
 
-        assert_eq!(vec![Token::Timestamp { ty: TimestampType::Utc("%Y-%m-%d".into()) }], tokens);
+        assert_eq!(vec![Token::Timestamp(None, "%Y-%m-%d".into(), Timezone::Utc)], tokens);
     }
 
     #[test]
     fn timestamp_with_pattern_local() {
         let tokens = parse("{timestamp:{%Y-%m-%d}l}").unwrap();
 
-        assert_eq!(vec![Token::Timestamp { ty: TimestampType::Local("%Y-%m-%d".into()) }], tokens);
+        assert_eq!(vec![Token::Timestamp(None, "%Y-%m-%d".into(), Timezone::Local)], tokens);
     }
 
     #[test]
     fn timestamp_with_pattern_utc_and_braces() {
         let tokens = parse("{timestamp:{%Y-%m-%d {{T}} %H:%M:%S.%.6f}s}").unwrap();
 
-        assert_eq!(vec![
-            Token::Timestamp {
-                ty: TimestampType::Utc("%Y-%m-%d {T} %H:%M:%S.%.6f".into())
-            }
-        ], tokens);
+        let expected = vec![
+            Token::Timestamp(None, "%Y-%m-%d {T} %H:%M:%S.%.6f".into(), Timezone::Utc)
+        ];
+        assert_eq!(expected, tokens);
     }
 
     #[test]
     fn timestamp_with_pattern_utc_and_braces_limit() {
         let tokens = parse("{timestamp:{{{%Y-%m-%dT%H:%M:%S.%.6f}}}s}").unwrap();
 
-        assert_eq!(vec![
-            Token::Timestamp {
-                ty: TimestampType::Utc("{%Y-%m-%dT%H:%M:%S.%.6f}".into())
-            }
-        ], tokens);
+        let expected = vec![
+            Token::Timestamp(None, "{%Y-%m-%dT%H:%M:%S.%.6f}".into(), Timezone::Utc)
+        ];
+        assert_eq!(expected, tokens);
     }
 
     #[test]
     fn timestamp_ext_with_pattern_and_fill_utc() {
         let tokens = parse("{timestamp:{%Y-%m-%d}.<s}").unwrap();
 
-        assert_eq!(vec![
-            Token::TimestampExt {
-                fill: '.',
-                align: Alignment::AlignLeft,
-                width: 0,
-                ty: TimestampType::Utc("%Y-%m-%d".into()),
-            }
-        ], tokens);
+        let spec = FormatSpec {
+            fill: '.',
+            align: Alignment::AlignLeft,
+            flags: 0,
+            precision: None,
+            width: 0,
+        };
+        assert_eq!(vec![Token::Timestamp(Some(spec), "%Y-%m-%d".into(), Timezone::Utc)], tokens);
     }
 
     #[test]
     fn timestamp_ext_with_pattern_local() {
         let tokens = parse("{timestamp:{%Y-%m-%dT%H:%M:%S.%.6f}>50l}").unwrap();
 
-        assert_eq!(vec![
-            Token::TimestampExt {
-                fill: ' ',
-                align: Alignment::AlignRight,
-                width: 50,
-                ty: TimestampType::Local("%Y-%m-%dT%H:%M:%S.%.6f".into()),
-            }
-        ], tokens);
+        let spec = FormatSpec {
+            fill: ' ',
+            align: Alignment::AlignRight,
+            flags: 0,
+            precision: None,
+            width: 50,
+        };
+        let exp = vec![
+            Token::Timestamp(Some(spec), "%Y-%m-%dT%H:%M:%S.%.6f".into(), Timezone::Local),
+        ];
+        assert_eq!(exp, tokens);
     }
 
     #[test]
-    fn placeholder() {
+    fn meta() {
         let tokens = parse("{hello}").unwrap();
 
-        let expected = vec![Token::Placeholder("hello".into(), Key::Name("hello".into()))];
+        let expected = vec![Token::Meta(MetaName::Name("hello".into()), None)];
         assert_eq!(expected, tokens);
     }
+
+    // #[test]
+    // fn metalist() {
+    //     let tokens = parse("{...}").unwrap();
+    //
+    //     let expected = vec![Token::MetaList(None)];
+    //     assert_eq!(expected, tokens);
+    // }
 }
