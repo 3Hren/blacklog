@@ -28,7 +28,7 @@ text -> Token
     / "}}" { Token::Piece(CLOSED_BRACE.into()) }
     / [^{}]+ { Token::Piece(match_str.into()) }
 format -> Token
-    = "{" "message" "}" { Token::Message_(None) }
+    = "{" "message" "}" { Token::Message(None) }
     / "{" "message:" fill:fill? align:align? width:width? precision:precision? "}" {
         let spec = FormatSpec {
             fill: fill.unwrap_or(' '),
@@ -39,7 +39,7 @@ format -> Token
             ty: (),
         };
 
-        Token::Message_(Some(spec))
+        Token::Message(Some(spec))
     }
     / "{" "severity" "}" { Token::Severity { ty: SeverityType::String } }
     / "{" "severity:" "s}" { Token::Severity { ty: SeverityType::String } }
@@ -177,8 +177,8 @@ pub struct FormatSpec<T> {
 pub enum Token {
     /// Portion of the format string which represents the next part to emit.
     Piece(String),
-    /// Log event message.
-    Message_(Option<FormatSpec<()>>),
+    /// Log event message with an optional spec.
+    Message(Option<FormatSpec<()>>),
     /// Severity placeholder either numeric or string, but without spec.
     Severity { ty: SeverityType },
     /// Severity placeholder either numeric or string with spec.
@@ -227,7 +227,7 @@ mod tests {
     fn message() {
         let tokens = parse("{message}").unwrap();
 
-        assert_eq!(vec![Token::Message_(None)], tokens);
+        assert_eq!(vec![Token::Message(None)], tokens);
     }
 
     #[test]
@@ -242,7 +242,7 @@ mod tests {
             width: 10,
             ty: (),
         };
-        assert_eq!(vec![Token::Message_(Some(spec))], tokens);
+        assert_eq!(vec![Token::Message(Some(spec))], tokens);
     }
 
     #[test]
