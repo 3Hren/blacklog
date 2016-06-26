@@ -1,11 +1,12 @@
 use std::fmt::Arguments;
 use std::borrow::Cow;
+use std::iter::Iterator;
 
 use chrono::{DateTime, UTC};
 
-use super::meta::{MetaBuf, MetaList};
+use Meta;
 
-// TODO: impl Iterator<Item=Meta> for RecordIter<'a> {}
+use super::meta::{MetaBuf, MetaList};
 
 /// Logging event context contains an information about where the event was created including the
 /// source code location and thread number.
@@ -73,6 +74,53 @@ impl<'a> Record<'a> {
     pub fn timestamp(&self) -> &DateTime<UTC> {
         &self.timestamp
     }
+
+    pub fn iter(&self) -> RecordIter<'a> {
+        RecordIter::new(self.meta)
+    }
+}
+
+pub struct RecordIter<'a> {
+    metalist: &'a MetaList<'a>,
+    id: usize,
+    curr: Option<&'a MetaList<'a>>,
+}
+
+impl<'a> RecordIter<'a> {
+    fn new(metalist: &'a MetaList) -> RecordIter<'a> {
+        RecordIter {
+            metalist: metalist,
+            id: 0,
+            curr: Some(metalist),
+        }
+    }
+}
+
+impl<'a> Iterator for RecordIter<'a> {
+    type Item = Meta<'a>;
+
+    fn next(&mut self) -> Option<Meta<'a>> {
+        if let Some(metalist) = self.curr {
+            match self.id {
+                id if id == metalist.meta().len() - 1 => {
+                    let res = metalist.meta()[id];
+                    self.id = 0;
+                    self.curr = metalist.prev();
+                    Some(res)
+                }
+                id if id < metalist.meta().len() - 1 => {
+                    let res = metalist.meta()[id];
+                    self.id += 1;
+                    Some(res)
+                }
+                id => {
+                    None
+                }
+            }
+        } else {
+            None
+        }
+    }
 }
 
 impl<'a> InactiveRecord<'a> {
@@ -116,7 +164,7 @@ impl<'a> From<Record<'a>> for RecordBuf {
 
 #[cfg(test)]
 mod tests {
-    use super::super::meta::MetaList;
+    use super::super::meta::{Meta, MetaList};
     use super::{Record};
 
     #[cfg(feature="benchmark")]
@@ -132,5 +180,36 @@ mod tests {
         assert_eq!(0, Record::new(0, 0, "", format_args!(""), &MetaList::new(&[]))
             .activate()
             .severity());
+    }
+
+    #[test]
+    fn iter() {
+        assert_eq!(4, Record::new(0, 0, "", format_args!(""), &MetaList::new(&[
+            Meta::new("n#1", &"v#1"),
+            Meta::new("n#2", &"v#2"),
+            Meta::new("n#3", &"v#3"),
+            Meta::new("n#4", &"v#4"),
+        ])).activate().iter().count());
+    }
+
+    #[test]
+    fn iter_with_nested_lists() {
+        fn run(rec: &Record) {
+            let mut iter = rec.iter();
+
+            assert_eq!("n#3", iter.next().unwrap().name);
+            assert_eq!("n#4", iter.next().unwrap().name);
+            assert_eq!("n#1", iter.next().unwrap().name);
+            assert_eq!("n#2", iter.next().unwrap().name);
+            assert!(iter.next().is_none());
+        }
+
+        let v = 42;
+        let meta1 = &[Meta::new("n#1", &v), Meta::new("n#2", &v)];
+        let meta2 = &[Meta::new("n#3", &v), Meta::new("n#4", &v)];
+        let metalist1 = MetaList::new(meta1);
+        let metalist2 = MetaList::next(meta2, Some(&metalist1));
+
+        run(&Record::new(0, 0, "", format_args!(""), &metalist2).activate());
     }
 }

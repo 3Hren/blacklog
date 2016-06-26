@@ -83,8 +83,8 @@ impl<T: Encode + ToEncodeBox> Encode2 for T {}
 
 #[derive(Debug, Copy, Clone)]
 pub struct Meta<'a> {
-    name: &'static str,
-    value: &'a Encode2,
+    pub name: &'static str, // TODO: Not sure this should be public.
+    pub value: &'a Encode2,
 }
 
 impl<'a> Meta<'a> {
@@ -114,6 +114,14 @@ impl<'a> MetaList<'a> {
             prev: prev,
             meta: meta,
         }
+    }
+
+    pub fn prev(&self) -> Option<&'a MetaList<'a>> {
+        self.prev
+    }
+
+    pub fn meta(&self) -> &[Meta<'a>] {
+        self.meta
     }
 }
 
