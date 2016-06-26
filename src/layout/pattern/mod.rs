@@ -7,7 +7,7 @@ use Severity;
 
 mod grammar;
 
-use self::grammar::{parse, Alignment, ParseError, SeverityType, TimestampType, Token};
+use self::grammar::{parse, Alignment, FormatSpec, ParseError, SeverityType, TimestampType, Token};
 
 fn padded(fill: char, align: Alignment, width: usize, data: &[u8], wr: &mut Write) ->
     Result<(), ::std::io::Error>
@@ -89,10 +89,20 @@ impl<F: SeverityMapping> Layout for PatternLayout<F> {
                 Token::Message(Some(spec)) => {
                     padded(spec.fill, spec.align, spec.width, rec.message().as_bytes(), wr)?
                 }
-                Token::Severity { ty: SeverityType::Num } =>
-                    wr.write_all(format!("{}", rec.severity()).as_bytes())?,
-                Token::Severity { ty: SeverityType::String } =>
-                    self.sevmap.map(rec.severity(), ' ', Alignment::AlignLeft, 0, wr)?,
+                Token::Severity(None, SeverityType::Num) => {
+                    wr.write_all(format!("{}", rec.severity()).as_bytes())?
+                }
+                Token::Severity(None, SeverityType::String) => {
+                    self.sevmap.map(rec.severity(), ' ', Alignment::AlignLeft, 0, wr)?
+                }
+                Token::Severity(Some(spec), SeverityType::Num) => {
+                    // Format all.
+                    unimplemented!();
+                }
+                Token::Severity(Some(spec), SeverityType::String) => {
+                    // Format all.
+                    unimplemented!();
+                }
                 Token::Timestamp { ty: TimestampType::Utc(ref pattern) } =>
                     wr.write_all(format!("{}", rec.timestamp().format(&pattern)).as_bytes())?,
                 _ => unimplemented!(),

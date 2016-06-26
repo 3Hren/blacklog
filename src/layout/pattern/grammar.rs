@@ -36,21 +36,23 @@ format -> Token
             flags: 0,
             precision: precision,
             width: width.unwrap_or(0),
-            ty: (),
         };
 
         Token::Message(Some(spec))
     }
-    / "{" "severity" "}" { Token::Severity { ty: SeverityType::String } }
-    / "{" "severity:" "s}" { Token::Severity { ty: SeverityType::String } }
-    / "{" "severity:" "d}" { Token::Severity { ty: SeverityType::Num } }
-    / "{" "severity:" fill:fill? align:align? width:width? ty:sty? "}" {
-        Token::SeverityExt {
+    / "{" "severity" "}" { Token::Severity(None, SeverityType::String) }
+    / "{" "severity:" "s}" { Token::Severity(None, SeverityType::String) }
+    / "{" "severity:" "d}" { Token::Severity(None, SeverityType::Num) }
+    / "{" "severity:" fill:fill? align:align? width:width? ty:sevty? "}" {
+        let spec = FormatSpec {
             fill: fill.unwrap_or(' '),
             align: align.unwrap_or(Alignment::AlignLeft),
+            flags: 0,
+            precision: None,
             width: width.unwrap_or(0),
-            ty: ty.unwrap_or(SeverityType::String),
-        }
+        };
+
+        Token::Severity(Some(spec), ty.unwrap_or(SeverityType::String))
     }
     / "{" "timestamp" "}" { Token::Timestamp { ty: TimestampType::Utc("%+".into()) } }
     / "{" "timestamp:" "d}" { Token::Timestamp { ty: TimestampType::Num } }
@@ -94,7 +96,7 @@ width -> usize
     = [0-9]+ { match_str.parse().unwrap() }
 precision -> usize
     = "." [0-9]+ { match_str[1..].parse().unwrap() }
-sty -> SeverityType
+sevty -> SeverityType
     = "d" { SeverityType::Num }
     / "s" { SeverityType::String }
 tz -> Timezone
@@ -149,7 +151,7 @@ pub enum Alignment {
 
 /// Specification for the formatting of an argument in the format string.
 #[derive(Debug, Copy, Clone, PartialEq)]
-pub struct FormatSpec<T> {
+pub struct FormatSpec {
     /// Optionally specified character to fill alignment with.
     pub fill: char,
     /// Optionally specified alignment.
@@ -169,8 +171,6 @@ pub struct FormatSpec<T> {
     pub precision: Option<usize>,
     /// The string width requested for the resulting format.
     pub width: usize,
-    /// The descriptor representing the format desired for this argument.
-    pub ty: T,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -178,11 +178,9 @@ pub enum Token {
     /// Portion of the format string which represents the next part to emit.
     Piece(String),
     /// Log event message with an optional spec.
-    Message(Option<FormatSpec<()>>),
-    /// Severity placeholder either numeric or string, but without spec.
-    Severity { ty: SeverityType },
-    /// Severity placeholder either numeric or string with spec.
-    SeverityExt { fill: char, align: Alignment, width: usize, ty: SeverityType },
+    Message(Option<FormatSpec>),
+    /// Log event severity formatted as either numeric or string with an optional spec.
+    Severity(Option<FormatSpec>, SeverityType),
     /// Timestamp placeholder without spec.
     Timestamp { ty: TimestampType },
     /// Timestamp placeholder with spec.
@@ -240,7 +238,6 @@ mod tests {
             flags: 0,
             precision: Some(8),
             width: 10,
-            ty: (),
         };
         assert_eq!(vec![Token::Message(Some(spec))], tokens);
     }
@@ -249,77 +246,81 @@ mod tests {
     fn severity() {
         let tokens = parse("{severity}").unwrap();
 
-        assert_eq!(vec![Token::Severity { ty: SeverityType::String }], tokens);
+        assert_eq!(vec![Token::Severity(None, SeverityType::String)], tokens);
     }
 
     #[test]
     fn severity_string() {
         let tokens = parse("{severity:s}").unwrap();
 
-        assert_eq!(vec![Token::Severity { ty: SeverityType::String }], tokens);
+        assert_eq!(vec![Token::Severity(None, SeverityType::String)], tokens);
     }
 
     #[test]
     fn severity_num() {
         let tokens = parse("{severity:d}").unwrap();
 
-        assert_eq!(vec![Token::Severity { ty: SeverityType::Num }], tokens);
+        assert_eq!(vec![Token::Severity(None, SeverityType::Num)], tokens);
     }
 
     #[test]
     fn severity_ext() {
         let tokens = parse("{severity:<10}").unwrap();
 
-        assert_eq!(vec![
-            Token::SeverityExt {
-                fill: ' ',
-                align: Alignment::AlignLeft,
-                width: 10,
-                ty: SeverityType::String
-            }
-        ], tokens);
+        let spec = FormatSpec {
+            fill: ' ',
+            align: Alignment::AlignLeft,
+            flags: 0,
+            precision: None,
+            width: 10,
+        };
+
+        assert_eq!(vec![Token::Severity(Some(spec), SeverityType::String)], tokens);
     }
 
     #[test]
     fn severity_ext_with_fill() {
         let tokens = parse("{severity:.^16}").unwrap();
 
-        assert_eq!(vec![
-            Token::SeverityExt {
-                fill: '.',
-                align: Alignment::AlignCenter,
-                width: 16,
-                ty: SeverityType::String
-            }
-        ], tokens);
+        let spec = FormatSpec {
+            fill: '.',
+            align: Alignment::AlignCenter,
+            flags: 0,
+            precision: None,
+            width: 16,
+        };
+
+        assert_eq!(vec![Token::Severity(Some(spec), SeverityType::String)], tokens);
     }
 
     #[test]
     fn severity_ext_with_fill_num() {
         let tokens = parse("{severity:.^16d}").unwrap();
 
-        assert_eq!(vec![
-            Token::SeverityExt {
-                fill: '.',
-                align: Alignment::AlignCenter,
-                width: 16,
-                ty: SeverityType::Num
-            }
-        ], tokens);
+        let spec = FormatSpec {
+            fill: '.',
+            align: Alignment::AlignCenter,
+            flags: 0,
+            precision: None,
+            width: 16,
+        };
+
+        assert_eq!(vec![Token::Severity(Some(spec), SeverityType::Num)], tokens);
     }
 
     #[test]
     fn severity_ext_with_fill_string() {
         let tokens = parse("{severity:.^16s}").unwrap();
 
-        assert_eq!(vec![
-            Token::SeverityExt {
-                fill: '.',
-                align: Alignment::AlignCenter,
-                width: 16,
-                ty: SeverityType::String
-            }
-        ], tokens);
+        let spec = FormatSpec {
+            fill: '.',
+            align: Alignment::AlignCenter,
+            flags: 0,
+            precision: None,
+            width: 16,
+        };
+
+        assert_eq!(vec![Token::Severity(Some(spec), SeverityType::String)], tokens);
     }
 
     #[test]
