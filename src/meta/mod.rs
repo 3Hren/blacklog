@@ -2,9 +2,7 @@ mod encode;
 
 pub use self::encode::Encode;
 
-use std::borrow::Cow;
-use std::fmt::{Arguments, Formatter, Debug};
-use std::io::Write;
+use std::fmt::{Formatter, Debug};
 use std::sync::{mpsc, Arc, Mutex};
 use std::sync::atomic::{AtomicI32, Ordering};
 use std::thread::{self, JoinHandle};
@@ -376,9 +374,7 @@ impl<'a, F: FnOnce() -> &'static str> Drop for Scope<'a, F> {
 
 #[cfg(test)]
 mod tests {
-    use std::sync::Arc;
-
-    use super::{SyncLogger, AsyncLogger, Lazy, Logger, Meta, MetaList, Encode};
+    use super::{SyncLogger, AsyncLogger, Lazy, Logger};
 
     #[cfg(feature="benchmark")]
     use test::Bencher;

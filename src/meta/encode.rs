@@ -118,8 +118,6 @@ impl<W: Write> Encoder for W {
 
 #[cfg(test)]
 mod tests {
-    use std::io::Write;
-
     use super::Encoder;
 
     #[test]

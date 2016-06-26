@@ -3,7 +3,7 @@ use std::borrow::Cow;
 
 use chrono::{DateTime, UTC};
 
-use super::meta::{Meta, MetaBuf, MetaList};
+use super::meta::{MetaBuf, MetaList};
 
 // TODO: impl Iterator<Item=Meta> for RecordIter<'a> {}
 
