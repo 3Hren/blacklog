@@ -23,4 +23,4 @@ mod record;
 pub use self::severity::Severity;
 pub use self::meta::Encode;
 pub use self::meta::{Logger, Meta, MetaList};
-pub use self::record::{Record, FrozenRecord};
+pub use self::record::{Record, InactiveRecord};

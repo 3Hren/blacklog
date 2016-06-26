@@ -28,7 +28,7 @@ text -> Token
     / "}}" { Token::Piece(CLOSED_BRACE.into()) }
     / [^{}]+ { Token::Piece(match_str.into()) }
 format -> Token
-    = "{" "message" "}" { Token::Message }
+    = "{" "message" "}" { Token::Message_(None) }
     / "{" "message:" fill:fill? align:align? width:width? "}" {
         Token::MessageExt {
             fill: fill.unwrap_or(' '),
@@ -223,7 +223,7 @@ mod tests {
     fn message() {
         let tokens = parse("{message}").unwrap();
 
-        assert_eq!(vec![Token::Message], tokens);
+        assert_eq!(vec![Token::Message_(None)], tokens);
     }
 
     #[test]

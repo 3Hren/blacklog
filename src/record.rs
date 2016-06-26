@@ -19,10 +19,10 @@ struct Context {
     thread: usize,
 }
 
-// TODO: When filtering we can pass both Record and RecordBuf. That's why we need a trait to unite
-// them.
+// TODO: When filtering we can pass both Record and RecordBuf. That's why we may need a trait to
+// unite them.
 #[derive(Debug, Copy, Clone)]
-pub struct FrozenRecord<'a> {
+pub struct InactiveRecord<'a> {
     sev: i32,
     context: Context,
     format: Arguments<'a>, // TODO: enum Message { Ready(&'a str), Prepared(Arguments<'a>) }.
@@ -45,7 +45,7 @@ pub struct Record<'a> {
 }
 
 impl<'a> Record<'a> {
-    pub fn new<T>(sev: T, line: u32, module: &'static str, format: Arguments<'a>, meta: &'a MetaList<'a>) -> FrozenRecord<'a>
+    pub fn new<T>(sev: T, line: u32, module: &'static str, format: Arguments<'a>, meta: &'a MetaList<'a>) -> InactiveRecord<'a>
         where i32: From<T>
     {
         let context = Context {
@@ -54,7 +54,7 @@ impl<'a> Record<'a> {
             thread: super::thread::id(),
         };
 
-        FrozenRecord {
+        InactiveRecord {
             sev: From::from(sev),
             context: context,
             format: format,
@@ -69,12 +69,15 @@ impl<'a> Record<'a> {
     pub fn message(&self) -> &str {
         &self.message
     }
+
+    pub fn timestamp(&self) -> &DateTime<UTC> {
+        &self.timestamp
+    }
 }
 
-impl<'a> FrozenRecord<'a> {
+impl<'a> InactiveRecord<'a> {
     #[inline]
     pub fn activate(self) -> Record<'a> {
-
         Record {
             sev: self.sev,
             message: Cow::Owned(format!("{}", self.format)),
@@ -108,5 +111,26 @@ impl<'a> From<Record<'a>> for RecordBuf {
             message: val.message,
             meta: From::from(val.meta),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::super::meta::MetaList;
+    use super::{Record};
+
+    #[cfg(feature="benchmark")]
+    use test::Bencher;
+
+    #[test]
+    fn inactive_severity() {
+        assert_eq!(0, Record::new(0, 0, "", format_args!(""), &MetaList::new(&[])).severity());
+    }
+
+    #[test]
+    fn severity() {
+        assert_eq!(0, Record::new(0, 0, "", format_args!(""), &MetaList::new(&[]))
+            .activate()
+            .severity());
     }
 }
