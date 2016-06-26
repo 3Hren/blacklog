@@ -177,12 +177,8 @@ pub struct FormatSpec<T> {
 pub enum Token {
     /// Portion of the format string which represents the next part to emit.
     Piece(String),
-    /// Logging message.
+    /// Log event message.
     Message_(Option<FormatSpec<()>>),
-    /// Message placeholder without spec to avoid unnecessary instructions.
-    Message,
-    /// Message placeholder with spec.
-    MessageExt { fill: char, align: Alignment, width: usize },
     /// Severity placeholder either numeric or string, but without spec.
     Severity { ty: SeverityType },
     /// Severity placeholder either numeric or string with spec.

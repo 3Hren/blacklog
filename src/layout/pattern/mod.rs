@@ -88,10 +88,6 @@ impl<F: SeverityMapping> Layout for PatternLayout<F> {
                 Token::Message_(Some(spec)) => {
                     padded(spec.fill.unwrap_or(' '), spec.align, spec.width, rec.message().as_bytes(), wr)?
                 }
-                Token::Message =>
-                    wr.write_all(rec.message().as_bytes())?,
-                Token::MessageExt { fill, align, width } =>
-                    padded(fill, align, width, rec.message().as_bytes(), wr)?,
                 Token::Severity { ty: SeverityType::Num } =>
                     wr.write_all(format!("{}", rec.severity()).as_bytes())?,
                 Token::Severity { ty: SeverityType::String } =>
