@@ -7,11 +7,12 @@ use Severity;
 
 mod grammar;
 
-use self::grammar::{parse, Align, ParseError, SeverityType, TimestampType, Token};
+use self::grammar::{parse, Alignment, ParseError, SeverityType, TimestampType, Token};
 
-fn padded(fill: char, align: Align, width: usize, data: &[u8], wr: &mut Write) ->
+fn padded(fill: char, align: Alignment, width: usize, data: &[u8], wr: &mut Write) ->
     Result<(), ::std::io::Error>
 {
+    let width = width as usize;
     let diff = if width > data.len() {
         width - data.len()
     } else {
@@ -19,9 +20,9 @@ fn padded(fill: char, align: Align, width: usize, data: &[u8], wr: &mut Write) -
     };
 
     let (lpad, rpad) = match align {
-        Align::Left => (0, diff),
-        Align::Right => (diff, 0),
-        Align::Middle => (diff / 2, diff - diff / 2),
+        Alignment::AlignLeft => (0, diff),
+        Alignment::AlignRight => (diff, 0),
+        Alignment::AlignCenter => (diff / 2, diff - diff / 2),
     };
 
     for _ in 0..lpad {
@@ -38,14 +39,14 @@ fn padded(fill: char, align: Align, width: usize, data: &[u8], wr: &mut Write) -
 }
 
 pub trait SeverityMapping {
-    fn map(&self, severity: Severity, fill: char, align: Align, width: usize, wr: &mut Write) ->
+    fn map(&self, severity: Severity, fill: char, align: Alignment, width: usize, wr: &mut Write) ->
         Result<(), ::std::io::Error>;
 }
 
 struct DefaultSeverityMapping;
 
 impl SeverityMapping for DefaultSeverityMapping {
-    fn map(&self, severity: Severity, fill: char, align: Align, width: usize, wr: &mut Write) ->
+    fn map(&self, severity: Severity, fill: char, align: Alignment, width: usize, wr: &mut Write) ->
         Result<(), ::std::io::Error>
     {
         // TODO: Try transmute.
@@ -84,7 +85,9 @@ impl<F: SeverityMapping> Layout for PatternLayout<F> {
                 Token::Message_(None) => {
                     wr.write_all(rec.message().as_bytes())?
                 }
-                Token::Message_(Some(spec)) => {}
+                Token::Message_(Some(spec)) => {
+                    padded(spec.fill.unwrap_or(' '), spec.align, spec.width, rec.message().as_bytes(), wr)?
+                }
                 Token::Message =>
                     wr.write_all(rec.message().as_bytes())?,
                 Token::MessageExt { fill, align, width } =>
@@ -92,7 +95,7 @@ impl<F: SeverityMapping> Layout for PatternLayout<F> {
                 Token::Severity { ty: SeverityType::Num } =>
                     wr.write_all(format!("{}", rec.severity()).as_bytes())?,
                 Token::Severity { ty: SeverityType::String } =>
-                    self.sevmap.map(rec.severity(), ' ', Align::Left, 0, wr)?,
+                    self.sevmap.map(rec.severity(), ' ', Alignment::AlignLeft, 0, wr)?,
                 Token::Timestamp { ty: TimestampType::Utc(ref pattern) } =>
                     wr.write_all(format!("{}", rec.timestamp().format(&pattern)).as_bytes())?,
                 _ => unimplemented!(),
@@ -114,7 +117,7 @@ mod tests {
     use {MetaList, Record, Severity};
     use layout::Layout;
     use layout::pattern::{PatternLayout, SeverityMapping};
-    use layout::pattern::grammar::Align;
+    use layout::pattern::grammar::Alignment;
 
     // TODO: Seems quite required for other testing modules. Maybe move into `record` module?
     macro_rules! record {
@@ -244,11 +247,11 @@ mod tests {
         struct Mapping;
 
         impl SeverityMapping for Mapping {
-            fn map(&self, severity: Severity, fill: char, align: Align, width: usize, wr: &mut Write) ->
+            fn map(&self, severity: Severity, fill: char, align: Alignment, width: usize, wr: &mut Write) ->
                 Result<(), ::std::io::Error>
             {
                 assert_eq!(' ', fill);
-                assert_eq!(Align::Left, align);
+                assert_eq!(Alignment::AlignLeft, align);
                 assert_eq!(0, width);
                 assert_eq!(2, severity);
                 wr.write_all("DEBUG".as_bytes())
@@ -268,11 +271,11 @@ mod tests {
         struct Mapping;
 
         impl SeverityMapping for Mapping {
-            fn map(&self, severity: Severity, fill: char, align: Align, width: usize, wr: &mut Write) ->
+            fn map(&self, severity: Severity, fill: char, align: Alignment, width: usize, wr: &mut Write) ->
                 Result<(), ::std::io::Error>
             {
                 assert_eq!(' ', fill);
-                assert_eq!(Align::Left, align);
+                assert_eq!(Alignment::AlignLeft, align);
                 assert_eq!(0, width);
                 assert_eq!(2, severity);
                 wr.write_all("DEBUG".as_bytes())
