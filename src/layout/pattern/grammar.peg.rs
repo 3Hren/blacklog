@@ -70,6 +70,18 @@ format -> Token
 
         Token::Timestamp(Some(spec), pattern.unwrap_or("%+".into()), tz)
     }
+    / "{" "line" "}" { Token::Line(None) }
+    / "{" "line:" fill:fill? align:align? width:width? precision:precision? "}" {
+        let spec = FormatSpec {
+            fill: fill.unwrap_or(' '),
+            align: align.unwrap_or(Alignment::AlignLeft),
+            flags: 0,
+            precision: precision,
+            width: width.unwrap_or(0),
+        };
+
+        Token::Line(Some(spec))
+    }
     / "{" name:name "}" { Token::Meta(name, None) }
 fill -> char
     = . &align { match_str.chars().next().unwrap() }

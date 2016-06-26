@@ -1,19 +1,5 @@
 pub use self::grammar::{expression, ParseError};
 
-// TODO: Implement all functionality.
-// [x] format_string := <text> [ format <text> ] *
-// [x] format := '{' [ argument ] [ ':' format_spec ] '}'
-// [ ] argument := integer | identifier
-// [ ] format_spec := [[fill]align][sign]['#'][0][width]['.' precision][type]
-// [ ] fill := character
-// [ ] align := '<' | '^' | '>'
-// [ ] sign := '+' | '-'
-// [ ] width := count
-// [ ] precision := count | '*'
-// [ ] type := identifier | ''
-// [-] count := parameter | integer
-// [-] parameter := integer '$'
-
 const OPENED_BRACE: &'static str = "{";
 const CLOSED_BRACE: &'static str = "}";
 
@@ -84,7 +70,8 @@ pub enum Token {
     Timestamp(Option<FormatSpec>, String, Timezone),
     /// Timestamp as a seconds elapsed from Unix epoch with an optional spec.
     TimestampNum(Option<FormatSpec>),
-    // Line(Option<Spec>)
+    /// The line number on which the logging event was created.
+    Line(Option<FormatSpec>),
     // Module(Option<Spec>)
     // Process(Option<Spec>, ProcessType)
     // Thread(Option<Spec>, ThreadType)
@@ -332,6 +319,27 @@ mod tests {
 
         let expected = vec![Token::Meta(MetaName::Name("hello".into()), None)];
         assert_eq!(expected, tokens);
+    }
+
+    #[test]
+    fn line() {
+        let tokens = parse("{line}").unwrap();
+
+        assert_eq!(vec![Token::Line(None)], tokens);
+    }
+
+    #[test]
+    fn line_spec() {
+        let tokens = parse("{line:/^20.16}").unwrap();
+
+        let spec = FormatSpec {
+            fill: '/',
+            align: Alignment::AlignCenter,
+            flags: 0,
+            precision: Some(16),
+            width: 20,
+        };
+        assert_eq!(vec![Token::Line(Some(spec))], tokens);
     }
 
     // #[test]
