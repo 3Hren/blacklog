@@ -14,7 +14,7 @@ use super::record::RecordBuf;
 use self::encode::{Encoder, ToEncodeBox};
 
 #[derive(Clone)]
-pub struct Lazy<F: Fn() -> E + Send + Sync + 'static, E: Encode>(Arc<Box<F>>);
+struct Lazy<F: Fn() -> E + Send + Sync + 'static, E: Encode>(Arc<Box<F>>);
 
 impl<F, E> Debug for Lazy<F, E>
     where F: Fn() -> E + Send + Sync + 'static,

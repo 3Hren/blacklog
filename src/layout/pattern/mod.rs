@@ -7,7 +7,7 @@ use super::{Error, Layout, LayoutFactory};
 
 mod grammar;
 
-use self::grammar::{parse, Alignment, FormatSpec, ParseError, SeverityType, TimestampType, Timezone, Token};
+use self::grammar::{parse, Alignment, ParseError, SeverityType, Timezone, Token};
 
 fn padded(fill: char, align: Alignment, width: usize, data: &[u8], wr: &mut Write) ->
     Result<(), ::std::io::Error>
@@ -54,7 +54,7 @@ impl SeverityMapping for DefaultSeverityMapping {
     }
 }
 
-pub struct PatternLayout<F: SeverityMapping = DefaultSeverityMapping> {
+pub struct PatternLayout<F: SeverityMapping> {
     tokens: Vec<Token>,
     sevmap: F,
 }

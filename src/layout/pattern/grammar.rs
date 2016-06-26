@@ -37,13 +37,6 @@ pub enum Timezone {
     Local,
 }
 
-#[derive(Debug, Clone, PartialEq)]
-pub enum TimestampType {
-    Num,
-    Utc(String),
-    Local(String),
-}
-
 /// Enum of alignments which are supported.
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub enum Alignment {

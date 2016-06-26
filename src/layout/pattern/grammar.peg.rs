@@ -3,7 +3,6 @@ use super::{
     FormatSpec,
     MetaName,
     SeverityType,
-    TimestampType,
     Timezone,
     Token,
     CLOSED_BRACE,
