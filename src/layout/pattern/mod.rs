@@ -126,13 +126,14 @@ impl<F: SevMap> Layout for PatternLayout<F> {
                     unimplemented!();
                 }
                 TokenBuf::MetaList(None) => {
-                    if let Some(meta) = rec.iter().next() {
+                    let mut iter = rec.iter();
+                    if let Some(meta) = iter.next() {
                         wr.write_all(meta.name.as_bytes())?;
                         write!(wr, ": ");
                         meta.value.encode(&mut wr as &mut Encoder)?;
                     }
 
-                    for meta in rec.iter().skip(1) {
+                    for meta in iter {
                         write!(wr, ", ");
                         wr.write_all(meta.name.as_bytes())?;
                         write!(wr, ": ");
