@@ -24,6 +24,7 @@ pub trait ToEncodeBox {
 pub trait Encoder {
     fn encode_bool(&mut self, value: bool) -> Result<(), Error>;
     fn encode_u64(&mut self, value: u64) -> Result<(), Error>;
+    fn encode_f64(&mut self, value: f64) -> Result<(), Error>;
     fn encode_str(&mut self, value: &str) -> Result<(), Error>;
 }
 
@@ -33,21 +34,15 @@ impl Encode for bool {
     }
 }
 
-impl ToEncodeBox for bool {
-    fn to_encode_buf(&self) -> Box<Encode> {
-        box self.to_owned()
-    }
-}
-
 impl Encode for u64 {
     fn encode(&self, encoder: &mut Encoder) -> Result<(), Error> {
         encoder.encode_u64(*self)
     }
 }
 
-impl ToEncodeBox for u64 {
-    fn to_encode_buf(&self) -> Box<Encode> {
-        box self.to_owned()
+impl Encode for f64 {
+    fn encode(&self, encoder: &mut Encoder) -> Result<(), Error> {
+        encoder.encode_f64(*self)
     }
 }
 
@@ -57,22 +52,9 @@ impl Encode for &'static str {
     }
 }
 
-impl ToEncodeBox for &'static str {
-    fn to_encode_buf(&self) -> Box<Encode> {
-        // box self.to_owned()
-        box Cow::Borrowed(*self)
-    }
-}
-
 impl Encode for str {
     fn encode(&self, encoder: &mut Encoder) -> Result<(), Error> {
         encoder.encode_str(self)
-    }
-}
-
-impl ToEncodeBox for str {
-    fn to_encode_buf(&self) -> Box<Encode> {
-        box self.to_owned()
     }
 }
 
@@ -83,16 +65,47 @@ impl<'a> Encode for Cow<'a, str> {
     }
 }
 
+impl Encode for String {
+    fn encode(&self, encoder: &mut Encoder) -> Result<(), Error> {
+        encoder.encode_str(&self[..])
+    }
+}
+
+impl ToEncodeBox for bool {
+    fn to_encode_buf(&self) -> Box<Encode> {
+        box self.to_owned()
+    }
+}
+
+impl ToEncodeBox for u64 {
+    fn to_encode_buf(&self) -> Box<Encode> {
+        box self.to_owned()
+    }
+}
+
+impl ToEncodeBox for f64 {
+    fn to_encode_buf(&self) -> Box<Encode> {
+        box *self
+    }
+}
+
+impl ToEncodeBox for &'static str {
+    fn to_encode_buf(&self) -> Box<Encode> {
+        // box self.to_owned()
+        box Cow::Borrowed(*self)
+    }
+}
+
+impl ToEncodeBox for str {
+    fn to_encode_buf(&self) -> Box<Encode> {
+        box self.to_owned()
+    }
+}
+
 impl<'a> ToEncodeBox for Cow<'a, str> {
     fn to_encode_buf(&self) -> Box<Encode> {
         unimplemented!()
         // box self.to_owned()
-    }
-}
-
-impl Encode for String {
-    fn encode(&self, encoder: &mut Encoder) -> Result<(), Error> {
-        encoder.encode_str(&self[..])
     }
 }
 
@@ -108,6 +121,10 @@ impl<'a, W: Write + 'a> Encoder for W {
     }
 
     fn encode_u64(&mut self, value: u64) -> Result<(), Error> {
+        write!(self, "{}", value)
+    }
+
+    fn encode_f64(&mut self, value: f64) -> Result<(), Error> {
         write!(self, "{}", value)
     }
 
@@ -127,5 +144,14 @@ mod tests {
         wr.encode_bool(true).unwrap();
 
         assert_eq!("true".as_bytes(), &wr[..]);
+    }
+
+    #[test]
+    fn encode_f64() {
+        let mut wr = Vec::new();
+
+        wr.encode_f64(3.1415).unwrap();
+
+        assert_eq!("3.1415".as_bytes(), &wr[..]);
     }
 }

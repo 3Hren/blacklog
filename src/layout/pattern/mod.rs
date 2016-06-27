@@ -129,6 +129,9 @@ impl<F: SevMap> Layout for PatternLayout<F> {
 
                     meta.value.encode(&mut wr as &mut Encoder)?;
                 }
+                TokenBuf::Meta(ref name, Some(spec)) => {
+                    unimplemented!();
+                }
                 TokenBuf::MetaList(None) => {
                     let mut iter = rec.iter();
                     if let Some(meta) = iter.next() {
@@ -474,6 +477,23 @@ mod tests {
             flag: false,
         }).activate());
     }
+
+    // TODO: Implement.
+    // #[test]
+    // fn meta_f64_with_spec() {
+    //     fn run<'a>(rec: &Record<'a>) {
+    //         let layout = PatternLayout::new("{pi:/^6.2}").unwrap();
+    //
+    //         let mut buf = Vec::new();
+    //         layout.format(rec, &mut buf).unwrap();
+    //
+    //         assert_eq!("/3.14/", from_utf8(&buf[..]).unwrap());
+    //     }
+    //
+    //     run(&record!(0, "", {
+    //         pi: 3.1415,
+    //     }).activate());
+    // }
 
     #[test]
     fn fail_meta_not_found() {
