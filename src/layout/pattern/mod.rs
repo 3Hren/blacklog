@@ -9,7 +9,8 @@ mod grammar;
 
 use self::grammar::{parse, Alignment, ParseError, SeverityType, Timezone, Token};
 
-// TODO: Incomplete. Need +/#/0 flags. Also be able to format 0x, 0X etc.
+// TODO: Incomplete. Need +/#/0 flags. Also be able to format 0x, 0X etc. Also quite poor float
+// formatting.
 fn pad(fill: char, align: Alignment, width: usize, prec: Option<usize>, mut data: &[u8], wr: &mut Write) ->
     Result<(), ::std::io::Error>
 {
@@ -120,7 +121,6 @@ impl<F: SevMap> Layout for PatternLayout<F> {
                     wr.write_all(format!("{}", rec.timestamp().format(&pattern)).as_bytes())?
                 }
                 Token::Meta(ref name, None) => {
-
                 }
                 _ => unimplemented!(),
             }
@@ -182,22 +182,22 @@ mod tests {
 
     #[test]
     fn piece() {
-        let layout = PatternLayout::new("1234567890").unwrap();
+        let layout = PatternLayout::new("hello").unwrap();
 
         let mut buf = Vec::new();
         layout.format(&record!(0, "", {}).activate(), &mut buf).unwrap();
 
-        assert_eq!("1234567890", from_utf8(&buf[..]).unwrap());
+        assert_eq!("hello", from_utf8(&buf[..]).unwrap());
     }
 
     #[test]
     fn piece_with_braces() {
-        let layout = PatternLayout::new("123{{abc}}456").unwrap();
+        let layout = PatternLayout::new("hello {{ world }}").unwrap();
 
         let mut buf = Vec::new();
         layout.format(&record!(0, "", {}).activate(), &mut buf).unwrap();
 
-        assert_eq!("123{abc}456", from_utf8(&buf[..]).unwrap());
+        assert_eq!("hello { world }", from_utf8(&buf[..]).unwrap());
     }
 
     #[test]

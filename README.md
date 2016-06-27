@@ -1,14 +1,23 @@
 # Planning
-- [x] MVP Pattern layout.
-- [x] MVP Terminal appender.
-- [x] MVP Logger.
 - [ ] Fully featured pattern layout.
+  - [x] Proof of concept.
+  - [ ] Meta List placeholder.
+  - [ ] +/#/0 flags.
+  - [ ] Precision for meta.
+  - [ ] Precision for floats.
+  - [ ] Hex, Bin, Debug, etc. types.
 - [ ] Fully featured file appender.
-- [x] Asynchronous logger.
-- [x] Macro or compiler-plugin.
+- [ ] Asynchronous logger.
+  - [x] Proof of concept.
+- [ ] Macro or compiler-plugin.
+  - [x] Proof of concept.
+  - [ ] Compiler plugin.
 - [ ] Reset at runtime.
-- [ ] Configuration from YAML.
-- [ ] Integration with default singleton log crate.
+- [ ] External configuration.
+  - [ ] From generic Deserialize object.
+  - [ ] From JSON.
+  - [ ] From YAML.
+- [ ] Integration with default log crate.
 - [ ] ...
 - [ ] Stable Rust support.
 
@@ -19,7 +28,7 @@
 - [?] Inflector.
 
 # Features
-- [ ] Fast it its category (prove with benchmarks with and without meta).
+- [ ] Fast in its category (prove with benchmarks with and without meta).
 - [ ] Structured (examples).
 - [ ] Thread-safe and clonable (example).
 - [ ] Asynchronous + synchronous (benchmarks).
