@@ -7,7 +7,7 @@ use super::{Error, Layout, LayoutFactory};
 
 mod grammar;
 
-use self::grammar::{parse, Alignment, ParseError, SeverityType, Timezone, Token};
+use self::grammar::{parse, Alignment, ParseError, SeverityType, Timezone, TokenBuf};
 
 // TODO: Incomplete. Need +/#/0 flags. Also be able to format 0x, 0X etc. Also quite poor float
 // formatting.
@@ -65,7 +65,7 @@ impl SevMap for DefaultSevMap {
 }
 
 pub struct PatternLayout<F: SevMap> {
-    tokens: Vec<Token>,
+    tokens: Vec<TokenBuf>,
     sevmap: F,
 }
 
@@ -78,7 +78,7 @@ impl PatternLayout<DefaultSevMap> {
 impl<F: SevMap> PatternLayout<F> {
     fn with(pattern: &str, sevmap: F) -> Result<PatternLayout<F>, ParseError> {
         let layout = PatternLayout {
-            tokens: parse(pattern)?,
+            tokens: parse(pattern)?.into_iter().map(From::from).collect(),
             sevmap: sevmap,
         };
 
@@ -90,37 +90,37 @@ impl<F: SevMap> Layout for PatternLayout<F> {
     fn format(&self, rec: &Record, wr: &mut Write) -> Result<(), Error> {
         for token in &self.tokens {
             match *token {
-                Token::Piece(ref piece) => {
+                TokenBuf::Piece(ref piece) => {
                     wr.write_all(piece.as_bytes())?
                 }
-                Token::Message(None) => {
+                TokenBuf::Message(None) => {
                     wr.write_all(rec.message().as_bytes())?
                 }
-                Token::Message(Some(spec)) => {
+                TokenBuf::Message(Some(spec)) => {
                     pad(spec.fill, spec.align, spec.width, spec.precision, rec.message().as_bytes(), wr)?
                 }
-                Token::Severity(None, SeverityType::Num) => {
+                TokenBuf::Severity(None, SeverityType::Num) => {
                     wr.write_all(format!("{}", rec.severity()).as_bytes())?
                 }
-                Token::Severity(None, SeverityType::String) => {
+                TokenBuf::Severity(None, SeverityType::String) => {
                     self.sevmap.map(rec.severity(), ' ', Alignment::AlignLeft, 0, wr)?
                 }
-                Token::Severity(Some(spec), SeverityType::Num) => {
+                TokenBuf::Severity(Some(spec), SeverityType::Num) => {
                     // Format all.
                     unimplemented!();
                 }
-                Token::Severity(Some(spec), SeverityType::String) => {
+                TokenBuf::Severity(Some(spec), SeverityType::String) => {
                     // Format all.
                     unimplemented!();
                 }
-                Token::TimestampNum(None) => {
+                TokenBuf::TimestampNum(None) => {
                     // Format as seconds (or microseconds) elapsed from Unix epoch.
                     unimplemented!();
                 }
-                Token::Timestamp(None, ref pattern, Timezone::Utc) => {
+                TokenBuf::Timestamp(None, ref pattern, Timezone::Utc) => {
                     wr.write_all(format!("{}", rec.timestamp().format(&pattern)).as_bytes())?
                 }
-                Token::Meta(ref name, None) => {
+                TokenBuf::Meta(ref name, None) => {
                 }
                 _ => unimplemented!(),
             }

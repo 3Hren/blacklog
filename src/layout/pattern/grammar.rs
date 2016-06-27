@@ -5,12 +5,6 @@ const CLOSED_BRACE: &'static str = "}";
 
 peg_file! grammar("grammar.peg.rs");
 
-#[derive(Debug, Clone, PartialEq)]
-pub enum MetaName {
-    Id(usize),
-    Name(String),
-}
-
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub enum SeverityType {
     Num,
@@ -29,7 +23,7 @@ pub enum ProcessType {
     String,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Copy, Clone, PartialEq)]
 pub enum Timezone {
     Utc,
     Local,
@@ -71,9 +65,9 @@ pub struct FormatSpec {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub enum Token {
+pub enum Token<'a> {
     /// Portion of the format string which represents the next part to emit.
-    Piece(String),
+    Piece(&'a str),
     /// Message with an optional spec.
     Message(Option<FormatSpec>),
     /// Severity formatted as either numeric or string with an optional spec.
@@ -87,11 +81,40 @@ pub enum Token {
     /// The module path where the logging event was created.
     Module(Option<FormatSpec>),
     /// Thread id or its name depending on type specified.
-    Thread(Option<FormatSpec>, ThreadType),
+    // Thread(Option<FormatSpec>, ThreadType),
     /// Process id (aka PID) or its name depending on type specified.
-    Process(Option<FormatSpec>, ProcessType),
-    Meta(MetaName, Option<FormatSpec>),
+    // Process(Option<FormatSpec>, ProcessType),
+    Meta(&'a str, Option<FormatSpec>),
     // MetaList(Option<Spec>, String[prefix], String[suffix], char[separator], String[pattern], Filter)
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum TokenBuf {
+    Piece(String),
+    Message(Option<FormatSpec>),
+    Severity(Option<FormatSpec>, SeverityType),
+    Timestamp(Option<FormatSpec>, String, Timezone),
+    TimestampNum(Option<FormatSpec>),
+    Line(Option<FormatSpec>),
+    Module(Option<FormatSpec>),
+    // Thread(Option<FormatSpec>, ThreadType),
+    // Process(Option<FormatSpec>, ProcessType),
+    Meta(String, Option<FormatSpec>),
+}
+
+impl<'a> From<Token<'a>> for TokenBuf {
+    fn from(val: Token<'a>) -> TokenBuf {
+        match val {
+            Token::Piece(piece) => TokenBuf::Piece(piece.into()),
+            Token::Message(spec) => TokenBuf::Message(spec),
+            Token::Severity(spec, ty) => TokenBuf::Severity(spec, ty),
+            Token::Timestamp(spec, pattern, tz) => TokenBuf::Timestamp(spec, pattern, tz),
+            Token::TimestampNum(spec) => TokenBuf::TimestampNum(spec),
+            Token::Line(spec) => TokenBuf::Line(spec),
+            Token::Module(spec) => TokenBuf::Module(spec),
+            Token::Meta(name, spec) => TokenBuf::Meta(name.into(), spec),
+        }
+    }
 }
 
 pub fn parse(pattern: &str) -> Result<Vec<Token>, ParseError> {
@@ -112,7 +135,7 @@ mod tests {
     fn piece() {
         let tokens = parse("hello").unwrap();
 
-        assert_eq!(vec![Token::Piece("hello".into())], tokens);
+        assert_eq!(vec![Token::Piece("hello")], tokens);
     }
 
     #[test]
@@ -338,7 +361,7 @@ mod tests {
     fn meta() {
         let tokens = parse("{hello}").unwrap();
 
-        let expected = vec![Token::Meta(MetaName::Name("hello".into()), None)];
+        let expected = vec![Token::Meta("hello", None)];
         assert_eq!(expected, tokens);
     }
 

@@ -1,7 +1,6 @@
 use super::{
     Alignment,
     FormatSpec,
-    MetaName,
     SeverityType,
     Timezone,
     Token,
@@ -10,14 +9,14 @@ use super::{
 };
 
 #[pub]
-expression -> Vec<Token>
+expression -> Vec<Token<'input>>
     = (format / text)+
     / { Vec::new() }
-text -> Token
-    = "{{" { Token::Piece(OPENED_BRACE.into()) }
-    / "}}" { Token::Piece(CLOSED_BRACE.into()) }
-    / [^{}]+ { Token::Piece(match_str.into()) }
-format -> Token
+text -> Token<'input>
+    = "{{" { Token::Piece(OPENED_BRACE) }
+    / "}}" { Token::Piece(CLOSED_BRACE) }
+    / [^{}]+ { Token::Piece(match_str) }
+format -> Token<'input>
     = "{" "message" "}" { Token::Message(None) }
     / "{" "message:" fill:fill? align:align? width:width? precision:precision? "}" {
         let spec = FormatSpec {
@@ -118,6 +117,5 @@ tchar -> char
     = "{{" { OPENED_BRACE.chars().next().unwrap() }
     / "}}" { CLOSED_BRACE.chars().next().unwrap() }
     / [^{}] { match_str.chars().next().unwrap() }
-name -> MetaName
-    = [0-9]+ { MetaName::Id(match_str.parse().expect("expect number")) }
-    / [a-zA-Z][a-zA-Z0-9]* { MetaName::Name(match_str.into()) }
+name -> &'input str
+    = [a-zA-Z][a-zA-Z0-9]* { match_str }
