@@ -1,11 +1,11 @@
 # Planning
 - [ ] Fully featured pattern layout.
   - [x] Proof of concept.
-  - [ ] Meta List placeholder.
+  - [x] Metalist placeholder.
+  - [ ] Precision for floats.
   - [ ] +/#/0 flags.
   - [ ] Precision for meta.
-  - [ ] Precision for floats.
-  - [ ] Hex, Bin, Debug, etc. types.
+  - [ ] Hex, Bin, Debug, etc. types for meta placeholders.
 - [ ] Fully featured file appender.
 - [ ] Asynchronous logger.
   - [x] Proof of concept.

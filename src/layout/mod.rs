@@ -14,7 +14,7 @@ quick_error! {
         Io(err: ::std::io::Error) {
             from()
         }
-        MetaNotFound {}
+        MetaNotFound {} // TODO: What meta?
     }
 }
 

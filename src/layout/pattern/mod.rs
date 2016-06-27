@@ -124,7 +124,10 @@ impl<F: SevMap> Layout for PatternLayout<F> {
                     wr.write_all(format!("{}", rec.timestamp().format(&pattern)).as_bytes())?
                 }
                 TokenBuf::Meta(ref name, None) => {
-                    unimplemented!();
+                    let meta = rec.iter().find(|meta| meta.name == name)
+                        .ok_or(Error::MetaNotFound)?;
+
+                    meta.value.encode(&mut wr as &mut Encoder)?;
                 }
                 TokenBuf::MetaList(None) => {
                     let mut iter = rec.iter();
@@ -454,6 +457,22 @@ mod tests {
         }
 
         run(&record!(2, "value", {}).activate(), b);
+    }
+
+    #[test]
+    fn meta_bool() {
+        fn run<'a>(rec: &Record<'a>) {
+            let layout = PatternLayout::new("{flag}").unwrap();
+
+            let mut buf = Vec::new();
+            layout.format(rec, &mut buf).unwrap();
+
+            assert_eq!("false", from_utf8(&buf[..]).unwrap());
+        }
+
+        run(&record!(0, "", {
+            flag: false,
+        }).activate());
     }
 
     #[test]
