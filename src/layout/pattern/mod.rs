@@ -130,14 +130,14 @@ impl<F: SevMap> Layout for PatternLayout<F> {
                     let mut iter = rec.iter();
                     if let Some(meta) = iter.next() {
                         wr.write_all(meta.name.as_bytes())?;
-                        write!(wr, ": ");
+                        write!(wr, ": ")?;
                         meta.value.encode(&mut wr as &mut Encoder)?;
                     }
 
                     for meta in iter {
-                        write!(wr, ", ");
+                        write!(wr, ", ")?;
                         wr.write_all(meta.name.as_bytes())?;
-                        write!(wr, ": ");
+                        write!(wr, ": ")?;
                         meta.value.encode(&mut wr as &mut Encoder)?;
                     }
                 }
@@ -256,7 +256,7 @@ mod tests {
     }
 
     #[test]
-    fn message_with_fill() {
+    fn message_with_spec_fill() {
         let layout = PatternLayout::new("[{message:.<10}]").unwrap();
 
         let mut buf = Vec::new();
@@ -266,7 +266,7 @@ mod tests {
     }
 
     #[test]
-    fn message_with_width_less_than_length() {
+    fn message_with_spec_width_less_than_length() {
         let layout = PatternLayout::new("[{message:<0}]").unwrap();
 
         let mut buf = Vec::new();
@@ -276,7 +276,7 @@ mod tests {
     }
 
     #[test]
-    fn message_with_full_spec() {
+    fn message_with_spec_full() {
         let layout = PatternLayout::new("{message:/^6.4}").unwrap();
 
         let mut buf = Vec::new();
@@ -464,12 +464,12 @@ mod tests {
             let mut buf = Vec::new();
             layout.format(rec, &mut buf).unwrap();
 
-            assert_eq!("num: 42, name: VasyaΩ", from_utf8(&buf[..]).unwrap());
+            assert_eq!("num: 42, name: Vasya", from_utf8(&buf[..]).unwrap());
         }
 
         run(&record!(0, "value", {
             num: 42,
-            name: "VasyaΩ",
+            name: "Vasya",
         }).activate());
     }
 }
