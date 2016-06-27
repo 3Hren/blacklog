@@ -9,9 +9,16 @@ mod grammar;
 
 use self::grammar::{parse, Alignment, ParseError, SeverityType, Timezone, Token};
 
-fn padded(fill: char, align: Alignment, width: usize, data: &[u8], wr: &mut Write) ->
+// TODO: Incomplete. Need +/#/0 flags. Also be able to format 0x, 0X etc.
+fn pad(fill: char, align: Alignment, width: usize, prec: Option<usize>, mut data: &[u8], wr: &mut Write) ->
     Result<(), ::std::io::Error>
 {
+    if let Some(val) = prec {
+        if val < data.len() {
+            data = &data[..val];
+        }
+    }
+
     let width = width as usize;
     let diff = if width > data.len() {
         width - data.len()
@@ -26,12 +33,14 @@ fn padded(fill: char, align: Alignment, width: usize, data: &[u8], wr: &mut Writ
     };
 
     for _ in 0..lpad {
+        // TODO: Invalid for UTF-8 characters with id > 255.
         wr.write(&[fill as u8])?;
     }
 
     wr.write_all(data)?;
 
     for _ in 0..rpad {
+        // TODO: Here too.
         wr.write(&[fill as u8])?;
     }
 
@@ -50,7 +59,7 @@ impl SevMap for DefaultSevMap {
         Result<(), ::std::io::Error>
     {
         // TODO: Try transmute.
-        padded(fill, align, width, format!("{}", severity).as_bytes(), wr)
+        pad(fill, align, width, None, format!("{}", severity).as_bytes(), wr)
     }
 }
 
@@ -87,7 +96,7 @@ impl<F: SevMap> Layout for PatternLayout<F> {
                     wr.write_all(rec.message().as_bytes())?
                 }
                 Token::Message(Some(spec)) => {
-                    padded(spec.fill, spec.align, spec.width, rec.message().as_bytes(), wr)?
+                    pad(spec.fill, spec.align, spec.width, spec.precision, rec.message().as_bytes(), wr)?
                 }
                 Token::Severity(None, SeverityType::Num) => {
                     wr.write_all(format!("{}", rec.severity()).as_bytes())?
@@ -235,6 +244,16 @@ mod tests {
         layout.format(&record!(0, "value", {}).activate(), &mut buf).unwrap();
 
         assert_eq!("[value]", from_utf8(&buf[..]).unwrap());
+    }
+
+    #[test]
+    fn message_with_full_spec() {
+        let layout = PatternLayout::new("{message:/^6.4}").unwrap();
+
+        let mut buf = Vec::new();
+        layout.format(&record!(0, "100500", {}).activate(), &mut buf).unwrap();
+
+        assert_eq!("/1005/", from_utf8(&buf[..]).unwrap());
     }
 
     #[cfg(feature="benchmark")]
