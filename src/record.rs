@@ -119,6 +119,8 @@ impl<'a> Iterator for RecordIter<'a> {
     }
 }
 
+// TODO: impl ExactSizeIterator, DoubleEndedIterator, IntoIterator, FromIterator.
+
 impl<'a> InactiveRecord<'a> {
     #[inline]
     pub fn activate(self) -> Record<'a> {
