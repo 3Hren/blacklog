@@ -11,17 +11,19 @@ pub enum SeverityType {
     String,
 }
 
-#[derive(Debug, Copy, Clone, PartialEq)]
-pub enum ThreadType {
-    Num,
-    String,
-}
+// TODO: Uncomment.
+// #[derive(Debug, Copy, Clone, PartialEq)]
+// pub enum ThreadType {
+//     Num,
+//     String,
+// }
 
-#[derive(Debug, Copy, Clone, PartialEq)]
-pub enum ProcessType {
-    Num,
-    String,
-}
+// TODO: Uncomment.
+// #[derive(Debug, Copy, Clone, PartialEq)]
+// pub enum ProcessType {
+//     Num,
+//     String,
+// }
 
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub enum Timezone {
@@ -85,7 +87,7 @@ pub enum Token<'a> {
     /// Process id (aka PID) or its name depending on type specified.
     // Process(Option<FormatSpec>, ProcessType),
     Meta(&'a str, Option<FormatSpec>),
-    // MetaList(Option<Spec>, String[prefix], String[suffix], char[separator], String[pattern], Filter)
+    MetaList(Option<FormatSpec>),
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -97,9 +99,10 @@ pub enum TokenBuf {
     TimestampNum(Option<FormatSpec>),
     Line(Option<FormatSpec>),
     Module(Option<FormatSpec>),
-    // Thread(Option<FormatSpec>, ThreadType),
-    // Process(Option<FormatSpec>, ProcessType),
+    // TODO: Thread(Option<FormatSpec>, ThreadType),
+    // TODO: Process(Option<FormatSpec>, ProcessType),
     Meta(String, Option<FormatSpec>),
+    MetaList(Option<FormatSpec>),
 }
 
 impl<'a> From<Token<'a>> for TokenBuf {
@@ -113,6 +116,7 @@ impl<'a> From<Token<'a>> for TokenBuf {
             Token::Line(spec) => TokenBuf::Line(spec),
             Token::Module(spec) => TokenBuf::Module(spec),
             Token::Meta(name, spec) => TokenBuf::Meta(name.into(), spec),
+            Token::MetaList(spec) => TokenBuf::MetaList(spec),
         }
     }
 }
@@ -407,11 +411,8 @@ mod tests {
         assert_eq!(vec![Token::Module(Some(spec))], tokens);
     }
 
-    // #[test]
-    // fn metalist() {
-    //     let tokens = parse("{...}").unwrap();
-    //
-    //     let expected = vec![Token::MetaList(None)];
-    //     assert_eq!(expected, tokens);
-    // }
+    #[test]
+    fn metalist() {
+        assert_eq!(vec![Token::MetaList(None)], parse("{...}").unwrap());
+    }
 }

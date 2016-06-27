@@ -94,6 +94,7 @@ format -> Token<'input>
 
         Token::Module(Some(spec))
     }
+    / "{" "..." "}" { Token::MetaList(None) }
     / "{" name:name "}" { Token::Meta(name, None) }
 fill -> char
     = . &align { match_str.chars().next().unwrap() }
