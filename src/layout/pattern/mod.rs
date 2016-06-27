@@ -476,6 +476,18 @@ mod tests {
     }
 
     #[test]
+    fn fail_meta_not_found() {
+        fn run<'a>(rec: &Record<'a>) {
+            let layout = PatternLayout::new("{flag}").unwrap();
+
+            let mut buf = Vec::new();
+            assert!(layout.format(rec, &mut buf).is_err());
+        }
+
+        run(&record!(0, "", {}).activate());
+    }
+
+    #[test]
     fn metalist() {
         fn run<'a>(rec: &Record<'a>) {
             let layout = PatternLayout::new("{...}").unwrap();

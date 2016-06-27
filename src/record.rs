@@ -102,13 +102,13 @@ impl<'a> Iterator for RecordIter<'a> {
     fn next(&mut self) -> Option<Meta<'a>> {
         self.curr.and_then(|metalist| {
             match self.id {
-                id if id == metalist.meta().len() - 1 => {
+                id if id + 1 == metalist.meta().len() => {
                     let res = metalist.meta()[id];
                     self.id = 0;
                     self.curr = metalist.prev();
                     Some(res)
                 }
-                id if id < metalist.meta().len() - 1 => {
+                id if id + 1 < metalist.meta().len() => {
                     let res = metalist.meta()[id];
                     self.id += 1;
                     Some(res)
