@@ -362,14 +362,6 @@ mod tests {
     }
 
     #[test]
-    fn meta() {
-        let tokens = parse("{hello}").unwrap();
-
-        let expected = vec![Token::Meta("hello", None)];
-        assert_eq!(expected, tokens);
-    }
-
-    #[test]
     fn line() {
         let tokens = parse("{line}").unwrap();
 
@@ -409,6 +401,27 @@ mod tests {
             width: 20,
         };
         assert_eq!(vec![Token::Module(Some(spec))], tokens);
+    }
+
+    #[test]
+    fn meta() {
+        let tokens = parse("{hello}").unwrap();
+
+        let expected = vec![Token::Meta("hello", None)];
+        assert_eq!(expected, tokens);
+    }
+
+    #[test]
+    fn meta_spec() {
+        let spec = FormatSpec {
+            fill: '/',
+            align: Alignment::AlignCenter,
+            flags: 0,
+            precision: Some(2),
+            width: 6,
+        };
+        println!("{pi:/^6.2}", pi=3.1415);
+        assert_eq!(vec![Token::Meta("pi", Some(spec))], parse("{pi:/^6.2}").unwrap());
     }
 
     #[test]
