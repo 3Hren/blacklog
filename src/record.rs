@@ -100,7 +100,7 @@ impl<'a> Iterator for RecordIter<'a> {
     type Item = Meta<'a>;
 
     fn next(&mut self) -> Option<Meta<'a>> {
-        if let Some(metalist) = self.curr {
+        self.curr.and_then(|metalist| {
             match self.id {
                 id if id == metalist.meta().len() - 1 => {
                     let res = metalist.meta()[id];
@@ -113,13 +113,9 @@ impl<'a> Iterator for RecordIter<'a> {
                     self.id += 1;
                     Some(res)
                 }
-                id => {
-                    None
-                }
+                _ => None
             }
-        } else {
-            None
-        }
+        })
     }
 }
 
