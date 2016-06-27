@@ -12,6 +12,7 @@ use super::{
 #[pub]
 expression -> Vec<Token>
     = (format / text)+
+    / { Vec::new() }
 text -> Token
     = "{{" { Token::Piece(OPENED_BRACE.into()) }
     / "}}" { Token::Piece(CLOSED_BRACE.into()) }

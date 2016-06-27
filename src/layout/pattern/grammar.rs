@@ -103,6 +103,12 @@ mod tests {
     use super::*;
 
     #[test]
+    fn empty() {
+        let expected: Vec<Token> = vec![];
+        assert_eq!(expected, parse("").unwrap());
+    }
+
+    #[test]
     fn piece() {
         let tokens = parse("hello").unwrap();
 

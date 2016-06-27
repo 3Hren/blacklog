@@ -171,6 +171,16 @@ mod tests {
     }
 
     #[test]
+    fn empty() {
+        let layout = PatternLayout::new("").unwrap();
+
+        let mut buf = Vec::new();
+        layout.format(&record!(0, "", {}).activate(), &mut buf).unwrap();
+
+        assert_eq!("", from_utf8(&buf[..]).unwrap());
+    }
+
+    #[test]
     fn piece() {
         let layout = PatternLayout::new("1234567890").unwrap();
 
