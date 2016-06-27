@@ -9,6 +9,8 @@ mod grammar;
 
 use self::grammar::{parse, Alignment, ParseError, SeverityType, Timezone, TokenBuf};
 
+use meta::Encoder;
+
 // TODO: Incomplete. Need +/#/0 flags. Also be able to format 0x, 0X etc. Also quite poor float
 // formatting.
 fn pad(fill: char, align: Alignment, width: usize, prec: Option<usize>, mut data: &[u8], wr: &mut Write) ->
@@ -87,7 +89,7 @@ impl<F: SevMap> PatternLayout<F> {
 }
 
 impl<F: SevMap> Layout for PatternLayout<F> {
-    fn format(&self, rec: &Record, wr: &mut Write) -> Result<(), Error> {
+    fn format(&self, rec: &Record, mut wr: &mut Write) -> Result<(), Error> {
         for token in &self.tokens {
             match *token {
                 TokenBuf::Piece(ref piece) => {
@@ -121,6 +123,21 @@ impl<F: SevMap> Layout for PatternLayout<F> {
                     wr.write_all(format!("{}", rec.timestamp().format(&pattern)).as_bytes())?
                 }
                 TokenBuf::Meta(ref name, None) => {
+                    unimplemented!();
+                }
+                TokenBuf::MetaList(None) => {
+                    if let Some(meta) = rec.iter().next() {
+                        wr.write_all(meta.name.as_bytes())?;
+                        write!(wr, ": ");
+                        meta.value.encode(&mut wr as &mut Encoder)?;
+                    }
+
+                    for meta in rec.iter().skip(1) {
+                        write!(wr, ", ");
+                        wr.write_all(meta.name.as_bytes())?;
+                        write!(wr, ": ");
+                        meta.value.encode(&mut wr as &mut Encoder)?;
+                    }
                 }
                 _ => unimplemented!(),
             }
@@ -418,5 +435,22 @@ mod tests {
         }
 
         run(&record!(2, "value", {}).activate(), b);
+    }
+
+    #[test]
+    fn metalist() {
+        fn run<'a>(rec: &Record<'a>) {
+            let layout = PatternLayout::new("{...}").unwrap();
+
+            let mut buf = Vec::new();
+            layout.format(rec, &mut buf).unwrap();
+
+            assert_eq!("num: 42, name: VasyaΩ", from_utf8(&buf[..]).unwrap());
+        }
+
+        run(&record!(0, "value", {
+            num: 42,
+            name: "VasyaΩ",
+        }).activate());
     }
 }

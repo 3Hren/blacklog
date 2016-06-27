@@ -11,7 +11,9 @@ use {Record, InactiveRecord, Severity};
 
 use super::record::RecordBuf;
 
-use self::encode::{Encoder, ToEncodeBox};
+use self::encode::{ToEncodeBox};
+
+pub use self::encode::Encoder;
 
 #[derive(Clone)]
 struct Lazy<F: Fn() -> E + Send + Sync + 'static, E: Encode>(Arc<Box<F>>);

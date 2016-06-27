@@ -102,7 +102,7 @@ impl ToEncodeBox for String {
     }
 }
 
-impl<W: Write> Encoder for W {
+impl<'a, W: Write + 'a> Encoder for W {
     fn encode_bool(&mut self, value: bool) -> Result<(), Error> {
         write!(self, "{}", value)
     }
