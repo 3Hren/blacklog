@@ -102,7 +102,7 @@ impl<F: SevMap> Layout for PatternLayout<F> {
                     pad(spec.fill, spec.align, spec.width, spec.precision, rec.message().as_bytes(), wr)?
                 }
                 TokenBuf::Severity(None, SeverityType::Num) => {
-                    wr.write_all(format!("{}", rec.severity()).as_bytes())?
+                    write!(wr, "{}", rec.severity())?
                 }
                 TokenBuf::Severity(None, SeverityType::String) => {
                     self.sevmap.map(rec.severity(), ' ', Alignment::AlignLeft, 0, wr)?
@@ -120,6 +120,7 @@ impl<F: SevMap> Layout for PatternLayout<F> {
                     unimplemented!();
                 }
                 TokenBuf::Timestamp(None, ref pattern, Timezone::Utc) => {
+                    // TODO: Replace with write! macro. Measure.
                     wr.write_all(format!("{}", rec.timestamp().format(&pattern)).as_bytes())?
                 }
                 TokenBuf::Meta(ref name, None) => {
@@ -378,6 +379,23 @@ mod tests {
         layout.format(&record!(2, "value", {}).activate(), &mut buf).unwrap();
 
         assert_eq!("2: value", from_utf8(&buf[..]).unwrap());
+    }
+
+    #[cfg(feature="benchmark")]
+    #[bench]
+    fn bench_severity(b: &mut Bencher) {
+        fn run<'a>(rec: &Record<'a>, b: &mut Bencher) {
+            let layout = PatternLayout::new("{severity:d}").unwrap();
+
+            let mut buf = Vec::with_capacity(128);
+
+            b.iter(|| {
+                layout.format(&rec, &mut buf).unwrap();
+                buf.clear();
+            });
+        }
+
+        run(&record!(0, "", {}).activate(), b);
     }
 
     #[cfg(feature="benchmark")]
