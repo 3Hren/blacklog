@@ -1,12 +1,8 @@
 pub mod format;
 
-use self::format::{Format, IntoBoxedFormat};
+use self::format::{Format, FormatInto, IntoBoxedFormat};
 
 pub use self::format::Error;
-
-pub trait FormatInto: Format + IntoBoxedFormat {}
-
-impl<T: Format + IntoBoxedFormat> FormatInto for T {}
 
 /// Meta information (also known as attribute).
 ///
@@ -64,14 +60,23 @@ impl<'a> MetaList<'a> {
 /// Owning evil twin of Meta.
 pub struct MetaBuf {
     name: &'static str,
-    value: Box<Format>,
+    value: Box<FormatInto>,
 }
 
 impl MetaBuf {
-    fn new(name: &'static str, value: Box<Format>) -> MetaBuf {
+    fn new(name: &'static str, value: Box<FormatInto>) -> MetaBuf {
         MetaBuf {
             name: name,
             value: value,
+        }
+    }
+}
+
+impl<'a> Into<Meta<'a>> for &'a MetaBuf {
+    fn into(self) -> Meta<'a> {
+        Meta {
+            name: self.name,
+            value: &*self.value,
         }
     }
 }
@@ -82,7 +87,7 @@ impl<'a> From<&'a MetaList<'a>> for Vec<MetaBuf> {
 
         let mut node = val;
         loop {
-            for meta in node.meta.iter().rev() {
+            for meta in node.meta.iter() {
                 result.push(MetaBuf::new(meta.name, meta.value.to_boxed_format()));
             }
 

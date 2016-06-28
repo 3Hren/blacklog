@@ -202,7 +202,8 @@ impl<'a> Formatter<'a> {
 pub trait Format: Send + Sync {
     /// Formats the value using the given formatter.
     ///
-    /// The formatter contains both writer
+    /// The formatter contains both writer and additional information (also known as spec) that
+    /// points to how should it be formatted.
     fn format(&self, format: &mut Formatter) -> Result<(), Error>;
 }
 
@@ -438,97 +439,107 @@ impl<'a> Format for Cow<'a, str> {
     }
 }
 
+pub trait FormatInto: Format + IntoBoxedFormat {}
+
+impl<T: Format + IntoBoxedFormat> FormatInto for T {}
+
 /// Extends the formatting trait with an ability of how to make
 pub trait IntoBoxedFormat: Format {
-    fn to_boxed_format(&self) -> Box<Format>;
+    fn to_boxed_format(&self) -> Box<FormatInto>;
 }
 
 impl IntoBoxedFormat for bool {
-    fn to_boxed_format(&self) -> Box<Format> {
+    fn to_boxed_format(&self) -> Box<FormatInto> {
         box *self
     }
 }
 
 impl IntoBoxedFormat for usize {
-    fn to_boxed_format(&self) -> Box<Format> {
+    fn to_boxed_format(&self) -> Box<FormatInto> {
         box *self
     }
 }
 
 impl IntoBoxedFormat for u8 {
-    fn to_boxed_format(&self) -> Box<Format> {
+    fn to_boxed_format(&self) -> Box<FormatInto> {
         box *self
     }
 }
 
 impl IntoBoxedFormat for u16 {
-    fn to_boxed_format(&self) -> Box<Format> {
+    fn to_boxed_format(&self) -> Box<FormatInto> {
         box *self
     }
 }
 
 impl IntoBoxedFormat for u32 {
-    fn to_boxed_format(&self) -> Box<Format> {
+    fn to_boxed_format(&self) -> Box<FormatInto> {
         box *self
     }
 }
 
 impl IntoBoxedFormat for u64 {
-    fn to_boxed_format(&self) -> Box<Format> {
+    fn to_boxed_format(&self) -> Box<FormatInto> {
         box *self
     }
 }
 
 impl IntoBoxedFormat for isize {
-    fn to_boxed_format(&self) -> Box<Format> {
+    fn to_boxed_format(&self) -> Box<FormatInto> {
         box *self
     }
 }
 
 impl IntoBoxedFormat for i8 {
-    fn to_boxed_format(&self) -> Box<Format> {
+    fn to_boxed_format(&self) -> Box<FormatInto> {
         box *self
     }
 }
 
 impl IntoBoxedFormat for i16 {
-    fn to_boxed_format(&self) -> Box<Format> {
+    fn to_boxed_format(&self) -> Box<FormatInto> {
         box *self
     }
 }
 
 impl IntoBoxedFormat for i32 {
-    fn to_boxed_format(&self) -> Box<Format> {
+    fn to_boxed_format(&self) -> Box<FormatInto> {
         box *self
     }
 }
 
 impl IntoBoxedFormat for i64 {
-    fn to_boxed_format(&self) -> Box<Format> {
+    fn to_boxed_format(&self) -> Box<FormatInto> {
         box *self
     }
 }
 
 impl IntoBoxedFormat for f32 {
-    fn to_boxed_format(&self) -> Box<Format> {
+    fn to_boxed_format(&self) -> Box<FormatInto> {
         box *self
     }
 }
 
 impl IntoBoxedFormat for f64 {
-    fn to_boxed_format(&self) -> Box<Format> {
+    fn to_boxed_format(&self) -> Box<FormatInto> {
         box *self
     }
 }
 
 impl IntoBoxedFormat for &'static str {
-    fn to_boxed_format(&self) -> Box<Format> {
+    fn to_boxed_format(&self) -> Box<FormatInto> {
         box Cow::Borrowed(*self)
     }
 }
 
+impl<'a> IntoBoxedFormat for Cow<'a, str> {
+    fn to_boxed_format(&self) -> Box<FormatInto> {
+        box self.clone().into_owned()
+    }
+}
+
 impl IntoBoxedFormat for String {
-    fn to_boxed_format(&self) -> Box<Format> {
+    fn to_boxed_format(&self) -> Box<FormatInto> {
         box self.clone()
     }
 }

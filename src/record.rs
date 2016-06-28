@@ -62,6 +62,16 @@ impl<'a> Record<'a> {
         }
     }
 
+    fn from_owned(rec: &'a RecordBuf, metalist: &'a MetaList<'a>) -> Record<'a> {
+        Record {
+            sev: rec.sev,
+            message: rec.message.clone(),
+            timestamp: rec.timestamp,
+            context: rec.context,
+            meta: metalist,
+        }
+    }
+
     pub fn severity(&self) -> i32 {
         self.sev
     }
@@ -169,10 +179,22 @@ impl<'a> From<Record<'a>> for RecordBuf {
     }
 }
 
+impl<'a> From<&'a Record<'a>> for RecordBuf {
+    fn from(val: &'a Record<'a>) -> RecordBuf {
+        RecordBuf {
+            timestamp: val.timestamp,
+            sev: val.sev,
+            context: val.context,
+            message: val.message.clone(),
+            meta: From::from(val.meta),
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
-    use super::super::meta::{Meta, MetaList};
-    use super::{Record};
+    use {Meta, MetaList};
+    use super::*;
 
     #[cfg(feature="benchmark")]
     use test::Bencher;
@@ -218,5 +240,32 @@ mod tests {
         let metalist2 = MetaList::next(meta2, Some(&metalist1));
 
         run(&Record::new(0, 0, "", format_args!(""), &metalist2).activate());
+    }
+
+    #[test]
+    fn to_owned() {
+        fn run(rec: &Record) {
+            let owned = RecordBuf::from(rec);
+            let meta = owned.meta.iter().map(Into::into).collect::<Vec<Meta>>();
+            let metalist = MetaList::new(&meta);
+            let borrow = Record::from_owned(&owned, &metalist);
+
+            assert_eq!(1, borrow.severity());
+            assert_eq!("message", borrow.message());
+            assert_eq!(rec.timestamp(), borrow.timestamp());
+            assert_eq!(2, borrow.line());
+            assert_eq!("mod", borrow.module());
+            assert_eq!(rec.thread(), borrow.thread());
+
+            let mut iter = borrow.iter();
+            assert_eq!("n#1", iter.next().unwrap().name);
+            assert_eq!("n#2", iter.next().unwrap().name);
+        }
+
+        let v = 42;
+        let meta = &[Meta::new("n#1", &v), Meta::new("n#2", &v)];
+        let metalist = MetaList::new(meta);
+
+        run(&Record::new(1, 2, "mod", format_args!("message"), &metalist).activate());
     }
 }
