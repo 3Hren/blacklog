@@ -1,5 +1,6 @@
+use meta::format::Alignment;
+
 use super::{
-    Alignment,
     FormatSpec,
     SeverityType,
     Timezone,

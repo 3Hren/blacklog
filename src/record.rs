@@ -4,13 +4,11 @@ use std::iter::Iterator;
 
 use chrono::{DateTime, UTC};
 
-use Meta;
-
-use super::meta::{MetaBuf, MetaList};
+use {Meta, MetaBuf, MetaList};
 
 /// Logging event context contains an information about where the event was created including the
 /// source code location and thread number.
-#[derive(Debug, Copy, Clone)]
+#[derive(Copy, Clone)]
 struct Context {
     /// The line number on which the logging event was created.
     line: u32,
@@ -22,21 +20,22 @@ struct Context {
 
 // TODO: When filtering we can pass both Record and RecordBuf. That's why we may need a trait to
 // unite them.
-#[derive(Debug, Copy, Clone)]
+#[derive(Copy, Clone)]
 pub struct InactiveRecord<'a> {
     sev: i32,
+    format: Arguments<'a>,
     context: Context,
-    format: Arguments<'a>, // TODO: enum Message { Ready(&'a str), Prepared(Arguments<'a>) }.
     meta: &'a MetaList<'a>,
 }
 
-#[derive(Debug, Copy, Clone)]
-enum Message<'a> {
-    Ready(&'a str),
-    Readonly(&'static str),
-}
+// TODO: Zero-copy optimization.
+// #[derive(Copy, Clone)]
+// enum Message<'a> {
+//     Ready(&'a str),
+//     Readonly(&'static str),
+// }
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct Record<'a> {
     sev: i32,
     message: Cow<'static, str>,
@@ -57,8 +56,8 @@ impl<'a> Record<'a> {
 
         InactiveRecord {
             sev: From::from(sev),
-            context: context,
             format: format,
+            context: context,
             meta: meta,
         }
     }
@@ -73,6 +72,18 @@ impl<'a> Record<'a> {
 
     pub fn timestamp(&self) -> &DateTime<UTC> {
         &self.timestamp
+    }
+
+    pub fn line(&self) -> u32 {
+        self.context.line
+    }
+
+    pub fn module(&self) -> &'static str {
+        self.context.module
+    }
+
+    pub fn thread(&self) -> usize {
+        self.context.thread
     }
 
     pub fn iter(&self) -> RecordIter<'a> {
@@ -122,7 +133,6 @@ impl<'a> Iterator for RecordIter<'a> {
 // TODO: impl ExactSizeIterator, DoubleEndedIterator, IntoIterator, FromIterator.
 
 impl<'a> InactiveRecord<'a> {
-    #[inline]
     pub fn activate(self) -> Record<'a> {
         Record {
             sev: self.sev,
@@ -138,7 +148,6 @@ impl<'a> InactiveRecord<'a> {
     }
 }
 
-#[derive(Debug)]
 pub struct RecordBuf {
     timestamp: DateTime<UTC>,
     sev: i32,

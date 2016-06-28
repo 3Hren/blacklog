@@ -1,68 +1,26 @@
 use std::io::Write;
 
-use {Record, Severity};
 use registry::Config;
+use {Format, Formatter, Record, Severity};
 
 use super::{Error, Layout, LayoutFactory};
 
 mod grammar;
 
-use self::grammar::{parse, Alignment, ParseError, SeverityType, Timezone, TokenBuf};
-
-use meta::Formatter;
-
-// TODO: Incomplete. Need +/#/0 flags. Also be able to format 0x, 0X etc. Also quite poor float
-// formatting.
-fn pad(fill: char, align: Alignment, width: usize, prec: Option<usize>, mut data: &[u8], wr: &mut Write) ->
-    Result<(), ::std::io::Error>
-{
-    if let Some(val) = prec {
-        if val < data.len() {
-            data = &data[..val];
-        }
-    }
-
-    let width = width as usize;
-    let diff = if width > data.len() {
-        width - data.len()
-    } else {
-        0
-    };
-
-    let (lpad, rpad) = match align {
-        Alignment::AlignLeft => (0, diff),
-        Alignment::AlignRight => (diff, 0),
-        Alignment::AlignCenter => (diff / 2, diff - diff / 2),
-    };
-
-    for _ in 0..lpad {
-        // TODO: Invalid for UTF-8 characters with id > 255.
-        wr.write(&[fill as u8])?;
-    }
-
-    wr.write_all(data)?;
-
-    for _ in 0..rpad {
-        // TODO: Here too.
-        wr.write(&[fill as u8])?;
-    }
-
-    Ok(())
-}
+use self::grammar::{parse, FormatSpec, ParseError, SeverityType, Timezone, TokenBuf};
 
 pub trait SevMap : Send + Sync {
-    fn map(&self, severity: Severity, fill: char, align: Alignment, width: usize, wr: &mut Write) ->
+    fn map(&self, severity: Severity, spec: FormatSpec, ty: SeverityType, wr: &mut Write) ->
         Result<(), ::std::io::Error>;
 }
 
 struct DefaultSevMap;
 
 impl SevMap for DefaultSevMap {
-    fn map(&self, severity: Severity, fill: char, align: Alignment, width: usize, wr: &mut Write) ->
+    fn map(&self, severity: Severity, spec: FormatSpec, ty: SeverityType, wr: &mut Write) ->
         Result<(), ::std::io::Error>
     {
-        // TODO: Try transmute.
-        pad(fill, align, width, None, format!("{}", severity).as_bytes(), wr)
+        severity.format(&mut Formatter::new(wr, spec.into()))
     }
 }
 
@@ -99,13 +57,13 @@ impl<F: SevMap> Layout for PatternLayout<F> {
                     wr.write_all(rec.message().as_bytes())?
                 }
                 TokenBuf::Message(Some(spec)) => {
-                    pad(spec.fill, spec.align, spec.width, spec.precision, rec.message().as_bytes(), wr)?
+                    rec.message().format(&mut Formatter::new(wr, spec.into()))?
                 }
                 TokenBuf::Severity(None, SeverityType::Num) => {
-                    write!(wr, "{}", rec.severity())?
+                    rec.severity().format(&mut Formatter::new(wr, Default::default()))?
                 }
                 TokenBuf::Severity(None, SeverityType::String) => {
-                    self.sevmap.map(rec.severity(), ' ', Alignment::AlignLeft, 0, wr)?
+                    self.sevmap.map(rec.severity(), Default::default(), SeverityType::String, wr)?
                 }
                 TokenBuf::Severity(Some(spec), SeverityType::Num) => {
                     // Format all.
@@ -127,26 +85,27 @@ impl<F: SevMap> Layout for PatternLayout<F> {
                     let meta = rec.iter().find(|meta| meta.name == name)
                         .ok_or(Error::MetaNotFound)?;
 
-                    // TODO: Too long variable name. Consider something.
-                    let mut formatter = Formatter::new(wr, None);
-                    meta.value.encode(&mut formatter)?;
+                    meta.value.format(&mut Formatter::new(wr, Default::default()))?;
                 }
                 TokenBuf::Meta(ref name, Some(spec)) => {
-                    unimplemented!();
+                    let meta = rec.iter().find(|meta| meta.name == name)
+                        .ok_or(Error::MetaNotFound)?;
+
+                    meta.value.format(&mut Formatter::new(wr, spec.into()))?;
                 }
                 TokenBuf::MetaList(None) => {
                     let mut iter = rec.iter();
                     if let Some(meta) = iter.next() {
                         wr.write_all(meta.name.as_bytes())?;
                         write!(wr, ": ")?;
-                        // meta.value.encode(&mut wr as &mut Encoder)?;
+                        meta.value.format(&mut Formatter::new(wr, Default::default()))?;
                     }
 
                     for meta in iter {
                         write!(wr, ", ")?;
                         wr.write_all(meta.name.as_bytes())?;
                         write!(wr, ": ")?;
-                        // meta.value.encode(&mut wr as &mut Encoder)?;
+                        meta.value.format(&mut Formatter::new(wr, Default::default()))?;
                     }
                 }
                 _ => unimplemented!(),
@@ -186,7 +145,8 @@ mod tests {
     use {MetaList, Record, Severity};
     use layout::Layout;
     use layout::pattern::{PatternLayout, SevMap};
-    use layout::pattern::grammar::Alignment;
+    use layout::pattern::grammar::{FormatSpec, SeverityType};
+    use meta::format::Alignment;
 
     // TODO: Seems quite required for other testing modules. Maybe move into `record` module?
     macro_rules! record {
@@ -336,13 +296,14 @@ mod tests {
         struct Mapping;
 
         impl SevMap for Mapping {
-            fn map(&self, severity: Severity, fill: char, align: Alignment, width: usize, wr: &mut Write) ->
+            fn map(&self, severity: Severity, spec: FormatSpec, ty: SeverityType, wr: &mut Write) ->
                 Result<(), ::std::io::Error>
             {
-                assert_eq!(' ', fill);
-                assert_eq!(Alignment::AlignLeft, align);
-                assert_eq!(0, width);
                 assert_eq!(2, severity);
+                assert_eq!(' ', spec.fill);
+                assert_eq!(Alignment::AlignUnknown, spec.align);
+                assert_eq!(0, spec.width);
+                assert_eq!(SeverityType::String, ty);
                 wr.write_all("DEBUG".as_bytes())
             }
         }
@@ -360,13 +321,14 @@ mod tests {
         struct Mapping;
 
         impl SevMap for Mapping {
-            fn map(&self, severity: Severity, fill: char, align: Alignment, width: usize, wr: &mut Write) ->
+            fn map(&self, severity: Severity, spec: FormatSpec, ty: SeverityType, wr: &mut Write) ->
                 Result<(), ::std::io::Error>
             {
-                assert_eq!(' ', fill);
-                assert_eq!(Alignment::AlignLeft, align);
-                assert_eq!(0, width);
                 assert_eq!(2, severity);
+                assert_eq!(' ', spec.fill);
+                assert_eq!(Alignment::AlignLeft, spec.align);
+                assert_eq!(0, spec.width);
+                assert_eq!(SeverityType::Num, ty);
                 wr.write_all("DEBUG".as_bytes())
             }
         }
@@ -480,22 +442,21 @@ mod tests {
         }).activate());
     }
 
-    // TODO: Implement.
-    // #[test]
-    // fn meta_f64_with_spec() {
-    //     fn run<'a>(rec: &Record<'a>) {
-    //         let layout = PatternLayout::new("{pi:/^6.2}").unwrap();
-    //
-    //         let mut buf = Vec::new();
-    //         layout.format(rec, &mut buf).unwrap();
-    //
-    //         assert_eq!("/3.14/", from_utf8(&buf[..]).unwrap());
-    //     }
-    //
-    //     run(&record!(0, "", {
-    //         pi: 3.1415,
-    //     }).activate());
-    // }
+    #[test]
+    fn meta_f64_with_spec() {
+        fn run<'a>(rec: &Record<'a>) {
+            let layout = PatternLayout::new("{pi:/^6.2}").unwrap();
+
+            let mut buf = Vec::new();
+            layout.format(rec, &mut buf).unwrap();
+
+            assert_eq!("/3.14/", from_utf8(&buf[..]).unwrap());
+        }
+
+        run(&record!(0, "", {
+            pi: 3.1415,
+        }).activate());
+    }
 
     #[test]
     fn fail_meta_not_found() {

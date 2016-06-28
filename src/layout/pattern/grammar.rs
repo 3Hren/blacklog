@@ -1,5 +1,8 @@
 pub use self::grammar::{expression, ParseError};
 
+use meta;
+use meta::format::Alignment;
+
 const OPENED_BRACE: &'static str = "{";
 const CLOSED_BRACE: &'static str = "}";
 
@@ -31,39 +34,38 @@ pub enum Timezone {
     Local,
 }
 
-/// Enum of alignments which are supported.
-#[derive(Debug, Copy, Clone, PartialEq)]
-pub enum Alignment {
-    /// The value will be aligned to the left.
-    AlignLeft,
-    /// The value will be aligned to the right.
-    AlignRight,
-    /// The value will be aligned in the center.
-    AlignCenter,
-}
-
-/// Specification for the formatting of an argument in the format string.
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub struct FormatSpec {
-    /// Optionally specified character to fill alignment with.
     pub fill: char,
-    /// Optionally specified alignment.
     pub align: Alignment,
-    /// Packed version of various flags provided.
     pub flags: u32,
-    /// The integer precision to use.
-    ///
-    /// For non-numeric types, this can be considered a "maximum width". If the resulting string is
-    /// longer than this width, then it is truncated down to this many characters and only those
-    /// are emitted.
-    ///
-    /// For integral types, this is ignored.
-    ///
-    /// For floating-point types, this indicates how many digits after the decimal point should be
-    /// printed.
     pub precision: Option<usize>,
-    /// The string width requested for the resulting format.
     pub width: usize,
+}
+
+impl Default for FormatSpec {
+    fn default() -> FormatSpec {
+        FormatSpec {
+            fill: ' ',
+            align: Alignment::AlignUnknown,
+            flags: 0,
+            precision: None,
+            width: 0,
+        }
+    }
+}
+
+impl Into<meta::format::FormatSpec> for FormatSpec {
+    fn into(self) -> meta::format::FormatSpec {
+        meta::format::FormatSpec {
+            fill: self.fill,
+            align: self.align,
+            flags: self.flags,
+            precision: self.precision,
+            width: self.width,
+            ty: None,
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -127,6 +129,8 @@ pub fn parse(pattern: &str) -> Result<Vec<Token>, ParseError> {
 
 #[cfg(test)]
 mod tests {
+    use meta::format::Alignment;
+
     use super::*;
 
     #[test]

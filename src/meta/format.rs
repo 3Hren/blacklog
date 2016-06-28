@@ -1,3 +1,12 @@
+//! Traits and type definition for meta information marshalling.
+//!
+//! This module contains a number of common things you'll need when dealing with logging meta
+//! information (also known as attributes). The most code part of this module is the `Format` trait
+//! that every meta information type should implement to be able properly encoded into bytes.
+//! There are common implementations for well-known types, but you are free to extend them for your
+//! own types.
+
+use std::borrow::Cow;
 use std::io::{Cursor, Write};
 
 pub type Error = ::std::io::Error;
@@ -54,7 +63,7 @@ impl Default for FormatSpec {
     }
 }
 
-/// Represenst both where to emit formatting strings to and how they should be formatted. A mutable
+/// Represents both where to emit formatting strings to and how they should be formatted. A mutable
 /// version of this is passed to all formatting traits.
 pub struct Formatter<'a> {
     // TODO: Do we need one more indirection?
@@ -75,10 +84,6 @@ impl<'a> Formatter<'a> {
     /// # Note
     ///
     /// This method does not perform any intermediate formatting.
-    pub fn write_str(&mut self, data: &str) -> Result<(), Error> {
-        self.write_all(data.as_bytes())
-    }
-
     pub fn write_all(&mut self, data: &[u8]) -> Result<(), Error> {
         self.wr.write_all(data)
     }
@@ -95,7 +100,7 @@ impl<'a> Formatter<'a> {
     /// - width     - the minimum width of what to emit.
     /// - precision - the maximum length to emit, the string is truncated if it is longer than
     ///               this length.
-    pub fn pad_str(&mut self, data: &str) -> Result<(), Error> {
+    pub fn write_str(&mut self, data: &str) -> Result<(), Error> {
         match *self.precision() {
             None => {
                 match self.width() {
@@ -123,6 +128,10 @@ impl<'a> Formatter<'a> {
         }
     }
 
+    pub fn fill(&self) -> char {
+        self.spec.fill
+    }
+
     pub fn align(&self) -> Alignment {
         self.spec.align
     }
@@ -133,6 +142,10 @@ impl<'a> Formatter<'a> {
 
     pub fn precision(&self) -> &Option<usize> {
         &self.spec.precision
+    }
+
+    pub fn ty(&self) -> &Option<char> {
+        &self.spec.ty
     }
 
     pub fn sign_plus(&self) -> bool {
@@ -188,14 +201,16 @@ impl<'a> Formatter<'a> {
 /// Every meta information type that wishes to be printed into layout should implement this trait.
 pub trait Format: Send + Sync {
     /// Formats the value using the given formatter.
+    ///
+    /// The formatter contains both writer
     fn format(&self, format: &mut Formatter) -> Result<(), Error>;
 }
 
 impl Format for bool {
     fn format(&self, format: &mut Formatter) -> Result<(), Error> {
         match *self {
-            true => format.pad_str("true"),
-            false => format.pad_str("false"),
+            true => format.write_str("true"),
+            false => format.write_str("false"),
         }
     }
 }
@@ -401,7 +416,120 @@ impl Format for f64 {
 
 impl Format for str {
     fn format(&self, format: &mut Formatter) -> Result<(), Error> {
-        format.pad_str(self)
+        format.write_str(self)
+    }
+}
+
+impl Format for &'static str {
+    fn format(&self, format: &mut Formatter) -> Result<(), Error> {
+        format.write_str(self)
+    }
+}
+
+impl Format for String {
+    fn format(&self, format: &mut Formatter) -> Result<(), Error> {
+        format.write_str(&self[..])
+    }
+}
+
+impl<'a> Format for Cow<'a, str> {
+    fn format(&self, format: &mut Formatter) -> Result<(), Error> {
+        format.write_str(self)
+    }
+}
+
+/// Extends the formatting trait with an ability of how to make
+pub trait IntoBoxedFormat: Format {
+    fn to_boxed_format(&self) -> Box<Format>;
+}
+
+impl IntoBoxedFormat for bool {
+    fn to_boxed_format(&self) -> Box<Format> {
+        box *self
+    }
+}
+
+impl IntoBoxedFormat for usize {
+    fn to_boxed_format(&self) -> Box<Format> {
+        box *self
+    }
+}
+
+impl IntoBoxedFormat for u8 {
+    fn to_boxed_format(&self) -> Box<Format> {
+        box *self
+    }
+}
+
+impl IntoBoxedFormat for u16 {
+    fn to_boxed_format(&self) -> Box<Format> {
+        box *self
+    }
+}
+
+impl IntoBoxedFormat for u32 {
+    fn to_boxed_format(&self) -> Box<Format> {
+        box *self
+    }
+}
+
+impl IntoBoxedFormat for u64 {
+    fn to_boxed_format(&self) -> Box<Format> {
+        box *self
+    }
+}
+
+impl IntoBoxedFormat for isize {
+    fn to_boxed_format(&self) -> Box<Format> {
+        box *self
+    }
+}
+
+impl IntoBoxedFormat for i8 {
+    fn to_boxed_format(&self) -> Box<Format> {
+        box *self
+    }
+}
+
+impl IntoBoxedFormat for i16 {
+    fn to_boxed_format(&self) -> Box<Format> {
+        box *self
+    }
+}
+
+impl IntoBoxedFormat for i32 {
+    fn to_boxed_format(&self) -> Box<Format> {
+        box *self
+    }
+}
+
+impl IntoBoxedFormat for i64 {
+    fn to_boxed_format(&self) -> Box<Format> {
+        box *self
+    }
+}
+
+impl IntoBoxedFormat for f32 {
+    fn to_boxed_format(&self) -> Box<Format> {
+        box *self
+    }
+}
+
+impl IntoBoxedFormat for f64 {
+    fn to_boxed_format(&self) -> Box<Format> {
+        box *self
+    }
+}
+
+impl IntoBoxedFormat for &'static str {
+    fn to_boxed_format(&self) -> Box<Format> {
+        box Cow::Borrowed(*self)
+    }
+}
+
+impl IntoBoxedFormat for String {
+    fn to_boxed_format(&self) -> Box<Format> {
+        box self.clone()
     }
 }
 
