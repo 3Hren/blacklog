@@ -11,14 +11,8 @@ pub enum Alignment {
     AlignRight,
     /// The value will be aligned in the center.
     AlignCenter,
-    // TODO: Document.
+    /// The value will take on a default alignment.
     AlignUnknown,
-}
-
-impl Default for Alignment {
-    fn default() -> Alignment {
-        Alignment::AlignUnknown
-    }
 }
 
 /// Specification for the formatting of an argument in the format string.
@@ -60,6 +54,8 @@ impl Default for FormatSpec {
     }
 }
 
+/// Represenst both where to emit formatting strings to and how they should be formatted. A mutable
+/// version of this is passed to all formatting traits.
 pub struct Formatter<'a> {
     // TODO: Do we need one more indirection?
     wr: &'a mut Write,
@@ -85,6 +81,58 @@ impl<'a> Formatter<'a> {
 
     pub fn write_all(&mut self, data: &[u8]) -> Result<(), Error> {
         self.wr.write_all(data)
+    }
+
+    /// This function takes a string slice and emits it to the internal buffer after applying the
+    /// relevant formatting flags specified.
+    ///
+    /// # Flags
+    ///
+    /// This method looks up the following flags:
+    ///
+    /// - fill      - what to emit as padding.
+    /// - align     - string alignment.
+    /// - width     - the minimum width of what to emit.
+    /// - precision - the maximum length to emit, the string is truncated if it is longer than
+    ///               this length.
+    pub fn pad_str(&mut self, data: &str) -> Result<(), Error> {
+        match *self.precision() {
+            None => {
+                match self.width() {
+                    0 => self.wr.write_all(data.as_bytes()),
+                    width => {
+                        let pad = width.saturating_sub(data.len());
+                        self.with_pad(pad, Alignment::AlignLeft, |format| {
+                            format.write_all(data.as_bytes())
+                        })
+                    }
+                }
+            }
+            Some(prec) => {
+                let data = if prec < data.len() {
+                    &data[..prec]
+                } else {
+                    &data
+                };
+
+                let pad = self.width().saturating_sub(data.len());
+                self.with_pad(pad, Alignment::AlignLeft, |format| {
+                    format.write_all(data.as_bytes())
+                })
+            }
+        }
+    }
+
+    pub fn align(&self) -> Alignment {
+        self.spec.align
+    }
+
+    pub fn width(&self) -> usize {
+        self.spec.width
+    }
+
+    pub fn precision(&self) -> &Option<usize> {
+        &self.spec.precision
     }
 
     pub fn sign_plus(&self) -> bool {
@@ -135,8 +183,45 @@ impl<'a> Formatter<'a> {
     }
 }
 
-pub trait Format {
+/// Represents a formattable entity.
+///
+/// Every meta information type that wishes to be printed into layout should implement this trait.
+pub trait Format: Send + Sync {
+    /// Formats the value using the given formatter.
     fn format(&self, format: &mut Formatter) -> Result<(), Error>;
+}
+
+impl Format for bool {
+    fn format(&self, format: &mut Formatter) -> Result<(), Error> {
+        match *self {
+            true => format.pad_str("true"),
+            false => format.pad_str("false"),
+        }
+    }
+}
+
+impl Format for isize {
+    fn format(&self, format: &mut Formatter) -> Result<(), Error> {
+        (*self as i64).format(format)
+    }
+}
+
+impl Format for i8 {
+    fn format(&self, format: &mut Formatter) -> Result<(), Error> {
+        (*self as i64).format(format)
+    }
+}
+
+impl Format for i16 {
+    fn format(&self, format: &mut Formatter) -> Result<(), Error> {
+        (*self as i64).format(format)
+    }
+}
+
+impl Format for i32 {
+    fn format(&self, format: &mut Formatter) -> Result<(), Error> {
+        (*self as i64).format(format)
+    }
 }
 
 impl Format for i64 {
@@ -195,17 +280,100 @@ impl Format for i64 {
     }
 }
 
+impl Format for usize {
+    fn format(&self, format: &mut Formatter) -> Result<(), Error> {
+        (*self as u64).format(format)
+    }
+}
+
+impl Format for u8 {
+    fn format(&self, format: &mut Formatter) -> Result<(), Error> {
+        (*self as u64).format(format)
+    }
+}
+
+impl Format for u16 {
+    fn format(&self, format: &mut Formatter) -> Result<(), Error> {
+        (*self as u64).format(format)
+    }
+}
+
+impl Format for u32 {
+    fn format(&self, format: &mut Formatter) -> Result<(), Error> {
+        (*self as u64).format(format)
+    }
+}
+
+impl Format for u64 {
+    fn format(&self, format: &mut Formatter) -> Result<(), Error> {
+        const LOWERCASE: &'static str = "0123456789abcdef";
+        const UPPERCASE: &'static str = "0123456789ABCDEF";
+
+        let (base, prefix, charset) = match format.spec.ty {
+            Some('x') => (16, "0x", LOWERCASE),
+            Some('X') => (16, "0x", UPPERCASE),
+            Some('o') => (8,  "0o", LOWERCASE),
+            Some('b') => (2,  "0b", LOWERCASE),
+            Some(..) | None => (10, "", LOWERCASE),
+        };
+
+        let prefix = prefix.as_bytes();
+        let charset = charset.as_bytes();
+
+        // Calculate width and do a simple formatting into a fixed-size buffer.
+        let mut val = *self;
+        let mut buf = ['0' as u8; 1 + 2 + 64];
+        let mut pos = buf.len();
+        for c in buf.iter_mut().rev() {
+            *c = charset[(val % base) as usize];
+            val /= base;
+            pos -= 1;
+
+            if val == 0 {
+                break;
+            }
+        }
+
+        let buf = &buf[pos..];
+        let mut pad = format.spec.width.saturating_sub(buf.len());
+
+        if format.sign_plus() {
+            format.write_all("+".as_bytes())?;
+            pad = pad.saturating_sub(1);
+        }
+
+        if format.alternate() {
+            format.write_all(prefix)?;
+            pad = pad.saturating_sub(prefix.len());
+        }
+
+        if format.sign_aware_zero_pad() {
+            format.spec.fill = '0';
+        }
+
+        format.with_pad(pad, Alignment::AlignRight, |format| {
+            format.write_all(buf)
+        })
+    }
+}
+
+impl Format for f32 {
+    fn format(&self, format: &mut Formatter) -> Result<(), Error> {
+        (*self as f64).format(format)
+    }
+}
+
 impl Format for f64 {
     fn format(&self, format: &mut Formatter) -> Result<(), Error> {
         let mut buf = [0; 128];
         let mut cur = Cursor::new(&mut buf[..]);
         match (format.spec.ty, format.spec.precision) {
-            (Some('e'), Some(p)) => unimplemented!(),
-            (Some('E'), Some(p)) => unimplemented!(),
-            (Some('e'), None) => unimplemented!(),
-            (Some('E'), None) => unimplemented!(),
-            (_, Some(p)) => write!(&mut cur, "{:.*}", p, *self)?,
-            (_, None) => write!(&mut cur, "{:}", *self)?,
+            (Some('e'), Some(prec)) => write!(&mut cur, "{:.*e}", prec, *self)?,
+            (Some('E'), Some(prec)) => write!(&mut cur, "{:.*E}", prec, *self)?,
+            (Some('e'), None) => write!(&mut cur, "{:e}", *self)?,
+            (Some('E'), None) => write!(&mut cur, "{:E}", *self)?,
+            (_, Some(prec)) => write!(&mut cur, "{:.*}", prec, *self)?,
+            (_, None) => write!(&mut cur, "{}", *self)?,
         }
         let pos = cur.position() as usize;
 
@@ -228,6 +396,12 @@ impl Format for f64 {
         format.with_pad(pad, Alignment::AlignRight, |format| {
             format.write_all(&cur.into_inner()[..pos])
         })
+    }
+}
+
+impl Format for str {
+    fn format(&self, format: &mut Formatter) -> Result<(), Error> {
+        format.pad_str(self)
     }
 }
 
@@ -254,7 +428,8 @@ mod tests {
         let spec = FormatSpec::default();
 
         let mut buf = Vec::new();
-        42i64.format(&mut Formatter::new(&mut buf, spec)).unwrap();
+        let val = 42i64;
+        val.format(&mut Formatter::new(&mut buf, spec)).unwrap();
 
         assert_eq!("42", from_utf8(&buf[..]).unwrap());
     }
@@ -264,7 +439,8 @@ mod tests {
         let spec = FormatSpec::default();
 
         let mut buf = Vec::new();
-        (-42i64).format(&mut Formatter::new(&mut buf, spec)).unwrap();
+        let val = -42i64;
+        val.format(&mut Formatter::new(&mut buf, spec)).unwrap();
 
         assert_eq!("-42", from_utf8(&buf[..]).unwrap());
     }
@@ -276,7 +452,8 @@ mod tests {
         spec.ty = Some('b');
 
         let mut buf = Vec::new();
-        9223372036854775807.format(&mut Formatter::new(&mut buf, spec)).unwrap();
+        let val = 9223372036854775807i64;
+        val.format(&mut Formatter::new(&mut buf, spec)).unwrap();
 
         assert_eq!("+0b111111111111111111111111111111111111111111111111111111111111111",
             from_utf8(&buf[..]).unwrap());
@@ -289,7 +466,8 @@ mod tests {
         spec.ty = Some('b');
 
         let mut buf = Vec::new();
-        (-9223372036854775808).format(&mut Formatter::new(&mut buf, spec)).unwrap();
+        let val = -9223372036854775808i64;
+        val.format(&mut Formatter::new(&mut buf, spec)).unwrap();
 
         assert_eq!("-0b1000000000000000000000000000000000000000000000000000000000000000",
             from_utf8(&buf[..]).unwrap());
@@ -307,7 +485,8 @@ mod tests {
         };
 
         let mut buf = Vec::new();
-        42i64.format(&mut Formatter::new(&mut buf, spec)).unwrap();
+        let val = 42i64;
+        val.format(&mut Formatter::new(&mut buf, spec)).unwrap();
 
         assert_eq!("////42////", from_utf8(&buf[..]).unwrap());
     }
@@ -324,7 +503,8 @@ mod tests {
         };
 
         let mut buf = Vec::new();
-        42i64.format(&mut Formatter::new(&mut buf, spec)).unwrap();
+        let val = 42i64;
+        val.format(&mut Formatter::new(&mut buf, spec)).unwrap();
 
         assert_eq!("+0x000002a", from_utf8(&buf[..]).unwrap());
     }
@@ -341,9 +521,35 @@ mod tests {
         };
 
         let mut buf = Vec::new();
-        42i64.format(&mut Formatter::new(&mut buf, spec)).unwrap();
+        let val = 42i64;
+        val.format(&mut Formatter::new(&mut buf, spec)).unwrap();
 
         assert_eq!("+0x2a00000", from_utf8(&buf[..]).unwrap());
+    }
+
+    #[test]
+    fn format_i32() {
+        let spec = FormatSpec::default();
+
+        let mut buf = Vec::new();
+        let val = 42i32;
+        val.format(&mut Formatter::new(&mut buf, spec)).unwrap();
+
+        assert_eq!("42", from_utf8(&buf[..]).unwrap());
+    }
+
+    #[test]
+    fn format_u64_max_bin() {
+        let mut spec = FormatSpec::default();
+        spec.flags = 0b111;
+        spec.ty = Some('b');
+
+        let mut buf = Vec::new();
+        let val = 18446744073709551615u64;
+        val.format(&mut Formatter::new(&mut buf, spec)).unwrap();
+
+        assert_eq!("+0b1111111111111111111111111111111111111111111111111111111111111111",
+            from_utf8(&buf[..]).unwrap());
     }
 
     #[test]
@@ -351,7 +557,8 @@ mod tests {
         let spec = FormatSpec::default();
 
         let mut buf = Vec::new();
-        3.1415f64.format(&mut Formatter::new(&mut buf, spec)).unwrap();
+        let val = 3.1415f64;
+        val.format(&mut Formatter::new(&mut buf, spec)).unwrap();
 
         assert_eq!("3.1415", from_utf8(&buf[..]).unwrap());
     }
@@ -361,7 +568,8 @@ mod tests {
         let spec = FormatSpec::default();
 
         let mut buf = Vec::new();
-        (-3.1415f64).format(&mut Formatter::new(&mut buf, spec)).unwrap();
+        let val = -3.1415f64;
+        val.format(&mut Formatter::new(&mut buf, spec)).unwrap();
 
         assert_eq!("-3.1415", from_utf8(&buf[..]).unwrap());
     }
@@ -375,7 +583,8 @@ mod tests {
         spec.width = 10;
 
         let mut buf = Vec::new();
-        3.1415f64.format(&mut Formatter::new(&mut buf, spec)).unwrap();
+        let val = 3.1415f64;
+        val.format(&mut Formatter::new(&mut buf, spec)).unwrap();
 
         assert_eq!("+3.1420000", from_utf8(&buf[..]).unwrap());
     }
@@ -389,9 +598,100 @@ mod tests {
         spec.width = 10;
 
         let mut buf = Vec::new();
-        3.1415f64.format(&mut Formatter::new(&mut buf, spec)).unwrap();
+        let val = 3.1415f64;
+        val.format(&mut Formatter::new(&mut buf, spec)).unwrap();
 
         assert_eq!("+00003.142", from_utf8(&buf[..]).unwrap());
+    }
+
+    #[test]
+    fn format_f64_with_spec_exp() {
+        let mut spec = FormatSpec::default();
+        spec.ty = Some('e');
+
+        let mut buf = Vec::new();
+        let val = 100500.0;
+        val.format(&mut Formatter::new(&mut buf, spec)).unwrap();
+
+        assert_eq!("1.005e5", from_utf8(&buf[..]).unwrap());
+    }
+
+    #[test]
+    fn format_f64_with_spec_exp_and_prec() {
+        let mut spec = FormatSpec::default();
+        spec.precision = Some(4);
+        spec.ty = Some('E');
+
+        let mut buf = Vec::new();
+        let val = 100500.0;
+        val.format(&mut Formatter::new(&mut buf, spec)).unwrap();
+
+        assert_eq!("1.0050E5", from_utf8(&buf[..]).unwrap());
+    }
+
+    #[test]
+    fn format_f32_spec() {
+        let mut spec = FormatSpec::default();
+        spec.precision = Some(2);
+
+        let mut buf = Vec::new();
+        let val = 3.1415f32;
+        val.format(&mut Formatter::new(&mut buf, spec)).unwrap();
+
+        assert_eq!("3.14", from_utf8(&buf[..]).unwrap());
+    }
+
+    #[test]
+    fn format_str() {
+        let spec = FormatSpec::default();
+
+        let mut buf = Vec::new();
+        let val = "le message";
+        val.format(&mut Formatter::new(&mut buf, spec)).unwrap();
+
+        assert_eq!("le message", from_utf8(&buf[..]).unwrap());
+    }
+
+    #[test]
+    fn format_str_with_spec() {
+        let mut spec = FormatSpec::default();
+        spec.fill = '/';
+        spec.align = Alignment::AlignCenter;
+        spec.width = 12;
+
+        let mut buf = Vec::new();
+        let val = "le message";
+        val.format(&mut Formatter::new(&mut buf, spec)).unwrap();
+
+        println!("{:/^12}", "le message");
+        assert_eq!("/le message/", from_utf8(&buf[..]).unwrap());
+    }
+
+    #[test]
+    fn format_str_with_spec_with_precision() {
+        let mut spec = FormatSpec::default();
+        spec.fill = '/';
+        spec.align = Alignment::AlignCenter;
+        spec.width = 10;
+        spec.precision = Some(8);
+
+        let mut buf = Vec::new();
+        let val = "le message";
+        val.format(&mut Formatter::new(&mut buf, spec)).unwrap();
+
+        assert_eq!("/le messa/", from_utf8(&buf[..]).unwrap());
+    }
+
+    #[test]
+    fn format_bool() {
+        let spec = FormatSpec::default();
+
+        let mut buf = Vec::new();
+        true.format(&mut Formatter::new(&mut buf, spec)).unwrap();
+        buf.push(' ' as u8);
+        false.format(&mut Formatter::new(&mut buf, spec)).unwrap();
+
+        assert_eq!("true false", from_utf8(&buf[..]).unwrap());
     }
 }
 
@@ -410,7 +710,8 @@ mod bench {
         b.iter(|| {
             {
                 let mut format = Formatter::new(&mut buf, spec);
-                42i64.format(&mut format).unwrap();
+                let val = 42i64;
+                val.format(&mut format).unwrap();
             }
             buf.clear();
         });
@@ -432,7 +733,8 @@ mod bench {
         b.iter(|| {
             {
                 let mut format = Formatter::new(&mut buf, spec);
-                42i64.format(&mut format).unwrap();
+                let val = 42i64;
+                val.format(&mut format).unwrap();
             }
             buf.clear();
         });
@@ -447,7 +749,24 @@ mod bench {
         b.iter(|| {
             {
                 let mut format = Formatter::new(&mut buf, spec);
-                3.1415f64.format(&mut format).unwrap();
+                let val = 3.1415f64;
+                val.format(&mut format).unwrap();
+            }
+            buf.clear();
+        });
+    }
+
+    #[bench]
+    fn bench_format_str(b: &mut Bencher) {
+        let spec = FormatSpec::default();
+
+        let mut buf = Vec::with_capacity(64);
+
+        b.iter(|| {
+            {
+                let mut format = Formatter::new(&mut buf, spec);
+                let val = "le message";
+                val.format(&mut format).unwrap();
             }
             buf.clear();
         });

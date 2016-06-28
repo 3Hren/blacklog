@@ -17,7 +17,7 @@ extern crate serde_json;
 
 // pub mod appender;
 // mod layout;
-mod meta;
+pub mod meta;
 // mod record;
 // mod registry;
 // mod severity;
@@ -29,3 +29,4 @@ mod meta;
 // pub use self::record::{Record, InactiveRecord};
 // pub use self::registry::Registry;
 // pub use self::severity::Severity;
+pub use self::meta::format::Format;

@@ -2,7 +2,7 @@
 //
 // pub use self::encode::Encode;
 //
-mod format;
+pub mod format;
 // use std::fmt::{self, Debug};
 // use std::sync::{mpsc, Arc, Mutex};
 // use std::sync::atomic::{AtomicI32, Ordering};
