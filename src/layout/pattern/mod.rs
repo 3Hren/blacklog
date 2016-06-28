@@ -9,7 +9,7 @@ mod grammar;
 
 use self::grammar::{parse, Alignment, ParseError, SeverityType, Timezone, TokenBuf};
 
-use meta::Encoder;
+use meta::Formatter;
 
 // TODO: Incomplete. Need +/#/0 flags. Also be able to format 0x, 0X etc. Also quite poor float
 // formatting.
@@ -127,7 +127,9 @@ impl<F: SevMap> Layout for PatternLayout<F> {
                     let meta = rec.iter().find(|meta| meta.name == name)
                         .ok_or(Error::MetaNotFound)?;
 
-                    meta.value.encode(&mut wr as &mut Encoder)?;
+                    // TODO: Too long variable name. Consider something.
+                    let mut formatter = Formatter::new(wr, None);
+                    meta.value.encode(&mut formatter)?;
                 }
                 TokenBuf::Meta(ref name, Some(spec)) => {
                     unimplemented!();
@@ -137,14 +139,14 @@ impl<F: SevMap> Layout for PatternLayout<F> {
                     if let Some(meta) = iter.next() {
                         wr.write_all(meta.name.as_bytes())?;
                         write!(wr, ": ")?;
-                        meta.value.encode(&mut wr as &mut Encoder)?;
+                        // meta.value.encode(&mut wr as &mut Encoder)?;
                     }
 
                     for meta in iter {
                         write!(wr, ", ")?;
                         wr.write_all(meta.name.as_bytes())?;
                         write!(wr, ": ")?;
-                        meta.value.encode(&mut wr as &mut Encoder)?;
+                        // meta.value.encode(&mut wr as &mut Encoder)?;
                     }
                 }
                 _ => unimplemented!(),
