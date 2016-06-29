@@ -66,8 +66,7 @@ impl<F: SevMap> Layout for PatternLayout<F> {
                     self.sevmap.map(rec.severity(), Default::default(), SeverityType::String, wr)?
                 }
                 TokenBuf::Severity(Some(spec), SeverityType::Num) => {
-                    // Format all.
-                    unimplemented!();
+                    rec.severity().format(&mut Formatter::new(wr, spec.into()))?
                 }
                 TokenBuf::Severity(Some(spec), SeverityType::String) => {
                     // Format all.
@@ -339,6 +338,16 @@ mod tests {
         layout.format(&record!(2, "value", {}).activate(), &mut buf).unwrap();
 
         assert_eq!("[2]", from_utf8(&buf[..]).unwrap());
+    }
+
+    #[test]
+    fn severity_num_with_spec() {
+        let layout = PatternLayout::new("[{severity:/^3d}]").unwrap();
+
+        let mut buf = Vec::new();
+        layout.format(&record!(4, "value", {}).activate(), &mut buf).unwrap();
+
+        assert_eq!("[/4/]", from_utf8(&buf[..]).unwrap());
     }
 
     #[test]
