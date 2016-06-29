@@ -141,7 +141,7 @@ mod tests {
     #[cfg(feature="benchmark")]
     use test::Bencher;
 
-    use {MetaList, Record, Severity};
+    use {Record, Severity};
     use layout::Layout;
     use layout::pattern::{PatternLayout, SevMap};
     use layout::pattern::grammar::{FormatSpec, SeverityType};

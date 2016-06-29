@@ -1,10 +1,11 @@
 use std::fmt::Arguments;
 use std::borrow::Cow;
-use std::iter::Iterator;
 
 use chrono::{DateTime, UTC};
 
-use {Meta, MetaBuf, MetaList};
+use {MetaBuf, MetaList};
+
+use meta::MetaListIter;
 
 /// Logging event context contains an information about where the event was created including the
 /// source code location and thread number.
@@ -96,47 +97,8 @@ impl<'a> Record<'a> {
         self.context.thread
     }
 
-    pub fn iter(&self) -> RecordIter<'a> {
-        RecordIter::new(self.meta)
-    }
-}
-
-pub struct RecordIter<'a> {
-    metalist: &'a MetaList<'a>,
-    id: usize,
-    curr: Option<&'a MetaList<'a>>,
-}
-
-impl<'a> RecordIter<'a> {
-    fn new(metalist: &'a MetaList) -> RecordIter<'a> {
-        RecordIter {
-            metalist: metalist,
-            id: 0,
-            curr: Some(metalist),
-        }
-    }
-}
-
-impl<'a> Iterator for RecordIter<'a> {
-    type Item = Meta<'a>;
-
-    fn next(&mut self) -> Option<Meta<'a>> {
-        self.curr.and_then(|metalist| {
-            match self.id {
-                id if id + 1 == metalist.meta().len() => {
-                    let res = metalist.meta()[id];
-                    self.id = 0;
-                    self.curr = metalist.prev();
-                    Some(res)
-                }
-                id if id + 1 < metalist.meta().len() => {
-                    let res = metalist.meta()[id];
-                    self.id += 1;
-                    Some(res)
-                }
-                _ => None
-            }
-        })
+    pub fn iter(&self) -> MetaListIter<'a> {
+        self.meta.iter()
     }
 }
 
