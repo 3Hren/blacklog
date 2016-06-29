@@ -14,8 +14,10 @@ use meta::format::FormatInto;
 
 type Error = ::std::io::Error;
 
+/// Represents a clonable wrapper over userland function, making it a valid meta information, that
+/// is evaluated each time on demand.
 #[derive(Clone)]
-struct Lazy<F>(Arc<Box<F>>);
+pub struct Lazy<F>(Arc<Box<F>>);
 
 impl<F, R> Lazy<F>
     where F: Fn() -> R + Send + Sync,
