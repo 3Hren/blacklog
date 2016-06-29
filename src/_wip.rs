@@ -10,35 +10,36 @@ use super::record::RecordBuf;
 use {Meta};
 use {Format, Formatter, IntoBoxedFormat};
 
+use meta::format::FormatInto;
+
 type Error = ::std::io::Error;
 
-// TODO: Not sure it's not possible to replace this with generic Fn or BoxFn.
 #[derive(Clone)]
-struct Lazy<F: Fn() -> E + Send + Sync + 'static, E: Format>(Arc<Box<F>>);
+struct Lazy<F>(Arc<Box<F>>);
 
-impl<F, E> Lazy<F, E>
-    where F: Fn() -> E + Send + Sync + 'static,
-          E: Format
+impl<F, R> Lazy<F>
+    where F: Fn() -> R + Send + Sync,
+          R: Format
 {
-    pub fn new(f: F) -> Lazy<F, E> {
+    pub fn new(f: F) -> Lazy<F> {
         Lazy(Arc::new(box f))
     }
 }
 
-impl<F, E> Format for Lazy<F, E>
-    where F: Fn() -> E + Send + Sync + 'static,
-          E: Format
+impl<F, R> Format for Lazy<F>
+    where F: Fn() -> R + Send + Sync,
+          R: Format
 {
     fn format(&self, format: &mut Formatter) -> Result<(), Error> {
         self.0().format(format)
     }
 }
 
-impl<E, F> IntoBoxedFormat for Lazy<F, E>
-    where F: Fn() -> E + Send + Sync + 'static,
-          E: Format + 'static
+impl<F, R> IntoBoxedFormat for Lazy<F>
+    where F: Fn() -> R + Send + Sync + 'static,
+          R: Format
 {
-    fn to_boxed_format(&self) -> Box<Format> {
+    fn to_boxed_format(&self) -> Box<FormatInto> {
         box Lazy(self.0.clone())
     }
 }
