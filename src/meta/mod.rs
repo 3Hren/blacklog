@@ -1,6 +1,6 @@
 pub mod format;
 
-use self::format::{Format, FormatInto, IntoBoxedFormat};
+use self::format::{FormatInto};
 
 pub use self::format::Error;
 
@@ -29,7 +29,6 @@ impl<'a> Meta<'a> {
 }
 
 /// Linked list of meta information containers. Used to composite various meta containers.
-// TODO: Implement Iterator to ease traversing.
 pub struct MetaList<'a> {
     prev: Option<&'a MetaList<'a>>,
     meta: &'a [Meta<'a>],
@@ -54,6 +53,47 @@ impl<'a> MetaList<'a> {
 
     pub fn meta(&self) -> &[Meta<'a>] {
         self.meta
+    }
+
+    pub fn iter(&'a self) -> MetaListIter<'a> {
+        MetaListIter::new(self)
+    }
+}
+
+pub struct MetaListIter<'a> {
+    idx: usize,
+    cur: Option<&'a MetaList<'a>>,
+}
+
+impl<'a> MetaListIter<'a> {
+    fn new(metalist: &'a MetaList) -> MetaListIter<'a> {
+        MetaListIter {
+            idx: 0,
+            cur: Some(metalist),
+        }
+    }
+}
+
+impl<'a> Iterator for MetaListIter<'a> {
+    type Item = Meta<'a>;
+
+    fn next(&mut self) -> Option<Meta<'a>> {
+        self.cur.and_then(|metalist| {
+            match self.idx {
+                idx if idx + 1 == metalist.meta().len() => {
+                    let res = metalist.meta()[idx];
+                    self.idx = 0;
+                    self.cur = metalist.prev();
+                    Some(res)
+                }
+                idx if idx + 1 < metalist.meta().len() => {
+                    let res = metalist.meta()[idx];
+                    self.idx += 1;
+                    Some(res)
+                }
+                _ => None
+            }
+        })
     }
 }
 
@@ -114,4 +154,34 @@ mod tests {
         assert_eq!("n#1", meta.name);
     }
 
+    #[test]
+    fn metalist_iter() {
+        let val = "val";
+        let meta = &[
+            Meta::new("n#1", &val),
+            Meta::new("n#2", &val),
+            Meta::new("n#3", &val),
+            Meta::new("n#4", &val),
+        ];
+        let metalist = MetaList::new(meta);
+
+        assert_eq!(4, metalist.iter().count());
+    }
+
+    #[test]
+    fn metalist_iter_with_nested_lists() {
+        let val = 42;
+        let meta1 = &[Meta::new("n#1", &val), Meta::new("n#2", &val)];
+        let meta2 = &[Meta::new("n#3", &val), Meta::new("n#4", &val)];
+        let metalist1 = MetaList::new(meta1);
+        let metalist2 = MetaList::next(meta2, Some(&metalist1));
+
+        let mut iter = metalist2.iter();
+
+        assert_eq!("n#3", iter.next().unwrap().name);
+        assert_eq!("n#4", iter.next().unwrap().name);
+        assert_eq!("n#1", iter.next().unwrap().name);
+        assert_eq!("n#2", iter.next().unwrap().name);
+        assert!(iter.next().is_none());
+    }
 }
