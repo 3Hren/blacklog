@@ -36,8 +36,4 @@ impl Registry {
     // fn filter(cfg: Config) -> Result<Box<Filter>, Error>;
     // fn mutant(cfg: Config) -> Result<Box<Mutant>, Error>;
     // fn appender(cfg: Config) -> Result<Box<Appender>, Error>;
-
-    fn ty(cfg: &Config) -> Result<&str, &'static str> {
-        unimplemented!();
-    }
 }
