@@ -23,10 +23,21 @@ impl Registry {
     }
     // fn logger(cfg: Config) -> Result<Box<Logger>, Error>;
     // fn handle(cfg: Config) -> Result<Box<Handle>, Error>;
-    pub fn layout(cfg: Config) -> Result<Box<Layout>, Box<Error>> {
-        unimplemented!();
+    pub fn layout(&self, cfg: &Config) -> Result<Box<Layout>, Box<Error>> {
+        let ty = cfg.find("type")
+            .ok_or("field \"type\" is required")?
+            .as_string()
+            .ok_or("field \"type\" must be a string")?;
+
+        self.layouts.get(ty)
+            .ok_or(format!("layout with \"{}\" not found", ty))?
+            .from(cfg)
     }
     // fn filter(cfg: Config) -> Result<Box<Filter>, Error>;
     // fn mutant(cfg: Config) -> Result<Box<Mutant>, Error>;
     // fn appender(cfg: Config) -> Result<Box<Appender>, Error>;
+
+    fn ty(cfg: &Config) -> Result<&str, &'static str> {
+        unimplemented!();
+    }
 }
