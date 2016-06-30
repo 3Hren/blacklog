@@ -1,4 +1,6 @@
-use Config;
+use {Config, Registry};
+
+pub use ::std::error::Error;
 
 pub trait Factory {
     type Item: ?Sized;
@@ -7,5 +9,5 @@ pub trait Factory {
     fn ty() -> &'static str where Self: Sized;
 
     /// Constructs a new component by configuring it with the given config.
-    fn from(&self, cfg: &Config) -> Result<Box<Self::Item>, Box<::std::error::Error>>;
+    fn from(&self, cfg: &Config, registry: &Registry) -> Result<Box<Self::Item>, Box<Error>>;
 }

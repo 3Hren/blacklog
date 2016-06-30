@@ -1,6 +1,6 @@
 use std::io::Write;
 
-use {Format, Formatter, Record, Severity};
+use {Format, Formatter, Record, Registry, Severity};
 use factory::Factory;
 use registry::Config;
 
@@ -125,7 +125,7 @@ impl Factory for PatternLayoutFactory {
         "pattern"
     }
 
-    fn from(&self, cfg: &Config) -> Result<Box<Layout>, Box<::std::error::Error>> {
+    fn from(&self, cfg: &Config, _registry: &Registry) -> Result<Box<Layout>, Box<::std::error::Error>> {
         let pattern = cfg.find("pattern")
             .ok_or(r#"field "pattern" is required"#)?
             .as_string()

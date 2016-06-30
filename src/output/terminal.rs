@@ -1,6 +1,6 @@
 use std::io::Write;
 
-use {Config, Output, Record};
+use {Config, Output, Record, Registry};
 
 use factory::Factory;
 
@@ -21,7 +21,7 @@ impl Factory for TerminalOutputFactory {
         "terminal"
     }
 
-    fn from(&self, _cfg: &Config) -> Result<Box<Output>, Box<::std::error::Error>> {
+    fn from(&self, _cfg: &Config, _registry: &Registry) -> Result<Box<Output>, Box<::std::error::Error>> {
         Ok(box Terminal)
     }
 }
