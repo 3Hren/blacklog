@@ -10,41 +10,10 @@ use super::record::RecordBuf;
 use {Meta};
 use {Format, Formatter, IntoBoxedFormat};
 
+use meta::FnMeta;
 use meta::format::FormatInto;
 
 type Error = ::std::io::Error;
-
-/// Represents a clonable wrapper over userland function, making it a valid meta information, that
-/// is evaluated each time on demand.
-#[derive(Clone)]
-pub struct Lazy<F>(Arc<Box<F>>);
-
-impl<F, R> Lazy<F>
-    where F: Fn() -> R + Send + Sync,
-          R: Format
-{
-    pub fn new(f: F) -> Lazy<F> {
-        Lazy(Arc::new(box f))
-    }
-}
-
-impl<F, R> Format for Lazy<F>
-    where F: Fn() -> R + Send + Sync,
-          R: Format
-{
-    fn format(&self, format: &mut Formatter) -> Result<(), Error> {
-        self.0().format(format)
-    }
-}
-
-impl<F, R> IntoBoxedFormat for Lazy<F>
-    where F: Fn() -> R + Send + Sync + 'static,
-          R: Format
-{
-    fn to_boxed_format(&self) -> Box<FormatInto> {
-        box Lazy(self.0.clone())
-    }
-}
 
 enum FilterAction {
     Deny,
@@ -56,7 +25,7 @@ enum FilterAction {
 ///
 /// # Note
 ///
-/// All filters must be satisfy Sync trait to be safely usable from multiple threads.
+/// All filters must satisfy Sync trait to be safely usable from multiple threads.
 trait Filter : Send + Sync {
     fn filter<'a>(&self, rec: &Record<'a>) -> FilterAction;
 }
@@ -289,7 +258,8 @@ impl<'a, F: FnOnce() -> &'static str> Drop for Scope<'a, F> {
 
 #[cfg(test)]
 mod tests {
-    use super::{SyncLogger, AsyncLogger, Lazy, Logger};
+    use FnMeta;
+    use super::{SyncLogger, AsyncLogger, Logger};
 
     #[cfg(feature="benchmark")]
     use test::Bencher;
@@ -378,9 +348,9 @@ mod tests {
 
         // Only severity, message and meta information.
         log!(log, 0, "file does not exist: /var/www/favicon.ico", {
-            lazy: Lazy::new(move || { format!("lazy message of {}", val) }),
-            lazy: Lazy::new(move || val ),
-            lazy: Lazy::new(move || fact(10)),
+            lazy: FnMeta::new(move || { format!("lazy message of {}", val) }),
+            lazy: FnMeta::new(move || val ),
+            lazy: FnMeta::new(move || fact(10)),
         });
     }
 

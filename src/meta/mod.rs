@@ -1,8 +1,10 @@
 pub mod format;
+mod func;
 
-use self::format::{FormatInto};
+use self::format::FormatInto;
 
 pub use self::format::Error;
+pub use self::func::FnMeta;
 
 /// Meta information (also known as attribute).
 ///

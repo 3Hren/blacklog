@@ -2,10 +2,12 @@
 - [ ] Fully featured pattern layout.
   - [x] Proof of concept.
   - [x] Metalist placeholder.
-  - [ ] Precision for floats.
-  - [ ] +/#/0 flags.
-  - [ ] Precision for meta.
-  - [ ] Hex, Bin, Debug, etc. types for meta placeholders.
+  - [x] Precision for floats.
+  - [x] +/#/0 flags.
+  - [x] Precision for meta.
+  - [x] Hex, Bin, Debug, etc. types for meta placeholders.
+  - [ ] Optional meta.
+  - [ ] Module, line, thread placeholders.  
 - [ ] Fully featured file appender.
 - [ ] Asynchronous logger.
   - [x] Proof of concept.
@@ -20,6 +22,7 @@
 - [ ] Integration with default log crate.
 - [ ] ...
 - [ ] Stable Rust support.
+- [ ] Builder pattern for each category.
 
 - [ ] Implement owned timestamp generator instead of interpretation.
 - [ ] Make token generator for pattern layout to act like lightweight pattern.

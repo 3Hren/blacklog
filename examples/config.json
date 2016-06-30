@@ -1,0 +1,16 @@
+{
+    "type": "sync",
+    "handlers": [
+        {
+            "layout": {
+                "type": "pattern",
+                "pattern": "{severity}, {timestamp}: {message}"
+            },
+            "outputs": [
+                {
+                    "type": "terminal"
+                }
+            ]
+        }
+    ]
+}
