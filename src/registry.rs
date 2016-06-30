@@ -3,15 +3,16 @@ use std::error::Error;
 
 use serde_json::Value;
 
-use {Layout, LayoutFactory};
+use {Layout, Output};
 
+use factory::Factory;
 use layout::PatternLayoutFactory;
 
 pub type Config = Value;
 
 #[derive(Default)]
 pub struct Registry {
-    layouts: HashMap<&'static str, Box<LayoutFactory>>,
+    layouts: HashMap<&'static str, Box<Factory<Item=Layout>>>,
 }
 
 impl Registry {
@@ -35,5 +36,7 @@ impl Registry {
     }
     // fn filter(cfg: Config) -> Result<Box<Filter>, Error>;
     // fn mutant(cfg: Config) -> Result<Box<Mutant>, Error>;
-    // fn appender(cfg: Config) -> Result<Box<Appender>, Error>;
+    pub fn output(&self, cfg: &Config) -> Result<Box<Output>, Box<Error>> {
+        unimplemented!();
+    }
 }

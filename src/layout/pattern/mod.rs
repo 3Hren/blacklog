@@ -1,9 +1,10 @@
 use std::io::Write;
 
-use registry::Config;
 use {Format, Formatter, Record, Severity};
+use factory::Factory;
+use registry::Config;
 
-use super::{Error, Layout, LayoutFactory};
+use super::{Error, Layout};
 
 mod grammar;
 
@@ -117,7 +118,9 @@ impl<F: SevMap> Layout for PatternLayout<F> {
 
 pub struct PatternLayoutFactory;
 
-impl LayoutFactory for PatternLayoutFactory {
+impl Factory for PatternLayoutFactory {
+    type Item = Layout;
+
     fn ty() -> &'static str {
         "pattern"
     }

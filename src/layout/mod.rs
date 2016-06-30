@@ -1,5 +1,6 @@
 use std::io::Write;
 
+use factory::Factory;
 use registry::Config;
 
 use super::Record;
@@ -22,12 +23,4 @@ quick_error! {
 /// will be consuming the log event.
 pub trait Layout: Send + Sync {
     fn format(&self, rec: &Record, wr: &mut Write) -> Result<(), Error>;
-}
-
-pub trait LayoutFactory {
-    /// Returns type as a string that is used mainly for concrete layout identification.
-    fn ty() -> &'static str where Self: Sized;
-
-    /// Constructs a new layout by configuring it with the given config.
-    fn from(&self, cfg: &Config) -> Result<Box<Layout>, Box<::std::error::Error>>;
 }
