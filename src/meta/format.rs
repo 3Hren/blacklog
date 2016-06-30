@@ -443,8 +443,10 @@ pub trait FormatInto: Format + IntoBoxedFormat {}
 
 impl<T: Format + IntoBoxedFormat> FormatInto for T {}
 
-/// Extends the formatting trait with an ability of how to make
+/// Extends the formatting trait with an ability of how to make a boxed format, which can be safely
+/// sent to another thread in the case of asynchronous logging.
 pub trait IntoBoxedFormat: Format {
+    /// Wraps itself into a boxed format, usually by cloning.
     fn to_boxed_format(&self) -> Box<FormatInto>;
 }
 
