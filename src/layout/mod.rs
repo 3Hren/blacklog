@@ -1,9 +1,6 @@
 use std::io::Write;
 
-use factory::Factory;
-use registry::Config;
-
-use super::Record;
+use record::Record;
 
 mod pattern;
 

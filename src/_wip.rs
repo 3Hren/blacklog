@@ -235,6 +235,8 @@ impl<'a, F: FnOnce() -> &'static str> Drop for Scope<'a, F> {
 
 #[cfg(test)]
 mod tests {
+    #[macro_use] use logger;
+
     use FnMeta;
     use super::{SyncLogger, AsyncLogger, Logger};
 

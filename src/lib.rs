@@ -35,4 +35,4 @@ pub use self::record::{Record, InactiveRecord};
 pub use self::registry::{Config, Registry};
 pub use self::severity::Severity;
 
-mod _wip;
+// mod _wip;

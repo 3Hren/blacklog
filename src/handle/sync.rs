@@ -1,5 +1,3 @@
-use std::rc::Rc;
-
 use {Config, Handle, Record, Registry};
 
 use layout::Layout;

@@ -89,3 +89,7 @@ macro_rules! log (
         log!($log, $sev, $fmt, [], {})
     }};
 );
+
+#[cfg(test)]
+mod tests {
+}
