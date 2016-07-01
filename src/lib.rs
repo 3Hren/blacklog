@@ -17,6 +17,7 @@ extern crate serde_json;
 mod factory;
 mod handle;
 mod layout;
+mod logger;
 mod meta;
 mod output;
 mod record;
@@ -26,6 +27,7 @@ mod thread;
 
 pub use self::handle::Handle;
 pub use self::layout::Layout;
+pub use self::logger::Logger;
 pub use self::meta::{FnMeta, Meta, MetaBuf, MetaList};
 pub use self::meta::format::{Format, Formatter, IntoBoxedFormat};
 pub use self::output::Output;

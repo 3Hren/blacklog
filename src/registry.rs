@@ -3,10 +3,11 @@ use std::error::Error;
 
 use serde_json::Value;
 
-use {Handle, Layout, Output};
+use {Handle, Layout, Logger, Output};
 
 use factory::Factory;
 use layout::PatternLayoutFactory;
+use logger::SyncLoggerFactory;
 use output::TerminalOutputFactory;
 use handle::SyncHandleFactory;
 
@@ -17,6 +18,7 @@ pub struct Registry {
     layouts: HashMap<&'static str, Box<Factory<Item=Layout>>>,
     outputs: HashMap<&'static str, Box<Factory<Item=Output>>>,
     handles: HashMap<&'static str, Box<Factory<Item=Handle>>>,
+    loggers: HashMap<&'static str, Box<Factory<Item=Logger>>>,
 }
 
 impl Registry {
@@ -28,11 +30,9 @@ impl Registry {
 
         result.handles.insert(SyncHandleFactory::ty(), box SyncHandleFactory);
 
+        result.loggers.insert(SyncLoggerFactory::ty(), box SyncLoggerFactory);
+
         result
-    }
-
-    pub fn init(&self) {
-
     }
 
     pub fn layout(&self, cfg: &Config) -> Result<Box<Layout>, Box<Error>> {
@@ -59,9 +59,16 @@ impl Registry {
             .from(cfg, self)
     }
 
+        pub fn logger(&self, cfg: &Config) -> Result<Box<Logger>, Box<Error>> {
+            let ty = Registry::ty(cfg)?;
+
+            self.loggers.get(ty)
+                .ok_or_else(|| format!("logger \"{}\" not found", ty))?
+                .from(cfg, self)
+        }
+
     // TODO: fn filter(&self, cfg: &Config) -> Result<Box<Filter>, Box<Error>>;
     // TODO: fn mutant(&self, cfg: &Config) -> Result<Box<Mutant>, Box<Error>>;
-    // TODO: fn logger(&self, cfg: &Config) -> Result<Box<Logger>, Box<Error>>;
 
     // TODO: Give a way to register user-defined components.
     fn ty(cfg: &Config) -> Result<&str, &str> {

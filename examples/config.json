@@ -1,7 +1,8 @@
 {
-    "type": "sync",
+    "type": "synchronous",
     "handlers": [
         {
+            "type": "synchronous",
             "layout": {
                 "type": "pattern",
                 "pattern": "{severity}, {timestamp}: {message}"

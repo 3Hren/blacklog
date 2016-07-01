@@ -38,29 +38,6 @@ impl Filter for NullFilter {
     }
 }
 
-#[macro_export]
-macro_rules! log (
-    ($log:ident, $sev:expr, $fmt:expr, [$($args:tt)*], {$($name:ident: $val:expr,)*}) => {{
-        $log.log(&$crate::Record::new($sev, line!(), module_path!(), format_args!($fmt, $($args)*),
-            &$crate::MetaList::new(&[
-                $($crate::Meta::new(stringify!($name), &$val)),*
-            ])
-        ));
-    }};
-    ($log:ident, $sev:expr, $fmt:expr, {$($name:ident: $val:expr,)*}) => {{
-        log!($log, $sev, $fmt, [], {$($name: $val,)*})
-    }};
-    ($log:ident, $sev:expr, $fmt:expr, [$($args:tt)*]) => {{
-        log!($log, $sev, $fmt, [$($args)*], {})
-    }};
-    ($log:ident, $sev:expr, $fmt:expr, $($args:tt)*) => {{
-        log!($log, $sev, $fmt, [$($args)*], {})
-    }};
-    ($log:ident, $sev:expr, $fmt:expr) => {{
-        log!($log, $sev, $fmt, [], {})
-    }};
-);
-
 pub trait Logger : Send {
     fn log<'a>(&self, record: &InactiveRecord<'a>);
 }
@@ -252,7 +229,7 @@ struct Scope<'a, F: FnOnce() -> &'static str> {
 impl<'a, F: FnOnce() -> &'static str> Drop for Scope<'a, F> {
     fn drop(&mut self) {
         let l = &self.logger;
-        log!(l, 42, "fuck you");
+        // log!(l, 42, "fuck you");
     }
 }
 
