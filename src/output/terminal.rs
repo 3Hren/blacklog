@@ -7,7 +7,7 @@ use factory::Factory;
 struct Terminal;
 
 impl Output for Terminal {
-    fn write(&self, _record: &Record, message: &[u8]) -> Result<(), ::std::io::Error> {
+    fn write(&self, _rec: &Record, message: &[u8]) -> Result<(), ::std::io::Error> {
         let stdout = ::std::io::stdout();
         let mut wr = stdout.lock();
         wr.write_all(message)?;

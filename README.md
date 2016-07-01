@@ -16,8 +16,8 @@
   - [ ] Compiler plugin.
 - [ ] Reset at runtime.
 - [ ] External configuration.
-  - [ ] From generic Deserialize object.
-  - [ ] From JSON.
+  - [x] From generic Deserialize object.
+  - [x] From JSON.
   - [ ] From YAML.
 - [ ] Integration with default log crate.
 - [ ] ...
