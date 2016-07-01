@@ -8,7 +8,10 @@ struct Terminal;
 
 impl Output for Terminal {
     fn write(&self, _record: &Record, message: &[u8]) -> Result<(), ::std::io::Error> {
-        ::std::io::stdout().write_all(message)
+        let stdout = ::std::io::stdout();
+        let mut wr = stdout.lock();
+        wr.write_all(message)?;
+        wr.write_all(b"\n")
     }
 }
 

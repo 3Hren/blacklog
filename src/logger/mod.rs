@@ -1,7 +1,9 @@
-use std::sync::{mpsc, Arc, Mutex};
+use std::sync::Arc;
 use std::sync::atomic::{AtomicI32, Ordering};
 
 use {Config, InactiveRecord, Registry};
+
+use handle::Handle;
 
 use factory::Factory;
 
@@ -12,11 +14,29 @@ pub trait Logger: Send {
 }
 
 #[derive(Clone)]
-pub struct SyncLogger;
+pub struct SyncLogger {
+    severity: Arc<AtomicI32>,
+    handlers: Arc<Vec<Box<Handle>>>,
+}
+
+impl SyncLogger {
+    fn new(handlers: Vec<Box<Handle>>) -> SyncLogger {
+        SyncLogger {
+            severity: Arc::new(AtomicI32::new(0)),
+            handlers: Arc::new(handlers),
+        }
+    }
+}
 
 impl Logger for SyncLogger {
-    fn log<'a>(&self, record: &InactiveRecord<'a>) {
-        unimplemented!();
+    fn log<'a>(&self, rec: &InactiveRecord<'a>) {
+        if rec.severity() >= self.severity.load(Ordering::Relaxed) {
+            let mut rec = rec.activate();
+
+            for handle in self.handlers.iter() {
+                handle.handle(&mut rec).unwrap();
+            }
+        }
     }
 }
 
@@ -29,8 +49,21 @@ impl Factory for SyncLoggerFactory {
         "synchronous"
     }
 
-    fn from(&self, _cfg: &Config, _registry: &Registry) -> Result<Box<Logger>, Box<::std::error::Error>> {
-        Ok(box SyncLogger)
+    fn from(&self, cfg: &Config, registry: &Registry) -> Result<Box<Logger>, Box<::std::error::Error>> {
+
+        let iter = cfg.find("handlers")
+            .ok_or("field \"handlers\" is required")?
+            .as_array()
+            .ok_or("field \"handlers\" must be an array")?
+            .iter();
+
+        let mut handlers = Vec::new();
+        for handle in iter {
+            println!("{:?}", handle);
+            handlers.push(registry.handle(handle)?);
+        }
+
+        Ok(box SyncLogger::new(handlers))
     }
 }
 
