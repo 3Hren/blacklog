@@ -1,10 +1,11 @@
+use std::error;
 use std::io::Write;
 
 use {Config, Output, Record, Registry};
 
 use factory::Factory;
 
-struct Terminal;
+pub struct Terminal;
 
 impl Output for Terminal {
     fn write(&self, _rec: &Record, message: &[u8]) -> Result<(), ::std::io::Error> {
@@ -15,16 +16,14 @@ impl Output for Terminal {
     }
 }
 
-pub struct TerminalOutputFactory;
-
-impl Factory for TerminalOutputFactory {
+impl Factory for Terminal {
     type Item = Output;
 
     fn ty() -> &'static str {
         "terminal"
     }
 
-    fn from(&self, _cfg: &Config, _registry: &Registry) -> Result<Box<Output>, Box<::std::error::Error>> {
+    fn from(_cfg: &Config, _registry: &Registry) -> Result<Box<Output>, Box<error::Error>> {
         Ok(box Terminal)
     }
 }

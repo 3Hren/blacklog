@@ -2,7 +2,7 @@ use super::Record;
 
 mod terminal;
 
-pub use self::terminal::TerminalOutputFactory;
+pub use self::terminal::Terminal;
 
 /// Outputs are responsible for delivering formatted log events to their destination.
 pub trait Output: Send + Sync {

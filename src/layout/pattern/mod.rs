@@ -1,3 +1,4 @@
+use std::error;
 use std::io::Write;
 
 use {Format, Formatter, Record, Registry, Severity};
@@ -10,12 +11,12 @@ mod grammar;
 
 use self::grammar::{parse, FormatSpec, ParseError, SeverityType, Timezone, TokenBuf};
 
-pub trait SevMap : Send + Sync {
+pub trait SevMap: Send + Sync {
     fn map(&self, severity: Severity, spec: FormatSpec, ty: SeverityType, wr: &mut Write) ->
         Result<(), ::std::io::Error>;
 }
 
-struct DefaultSevMap;
+pub struct DefaultSevMap;
 
 impl SevMap for DefaultSevMap {
     fn map(&self, severity: Severity, spec: FormatSpec, ty: SeverityType, wr: &mut Write) ->
@@ -25,7 +26,7 @@ impl SevMap for DefaultSevMap {
     }
 }
 
-pub struct PatternLayout<F: SevMap> {
+pub struct PatternLayout<F: SevMap=DefaultSevMap> {
     tokens: Vec<TokenBuf>,
     sevmap: F,
 }
@@ -116,16 +117,14 @@ impl<F: SevMap> Layout for PatternLayout<F> {
     }
 }
 
-pub struct PatternLayoutFactory;
-
-impl Factory for PatternLayoutFactory {
+impl<F: SevMap> Factory for PatternLayout<F> {
     type Item = Layout;
 
     fn ty() -> &'static str {
         "pattern"
     }
 
-    fn from(&self, cfg: &Config, _registry: &Registry) -> Result<Box<Layout>, Box<::std::error::Error>> {
+    fn from(cfg: &Config, _registry: &Registry) -> Result<Box<Layout>, Box<error::Error>> {
         let pattern = cfg.find("pattern")
             .ok_or(r#"field "pattern" is required"#)?
             .as_string()

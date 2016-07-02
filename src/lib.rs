@@ -9,10 +9,10 @@
 #![plugin(peg_syntax_ext)]
 
 #[cfg(unix)] extern crate libc;
+#[cfg(feature="benchmark")] extern crate test;
 extern crate chrono;
 extern crate serde_json;
 #[macro_use] extern crate quick_error;
-#[cfg(feature="benchmark")] extern crate test;
 
 mod factory;
 mod handle;

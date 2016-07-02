@@ -40,16 +40,14 @@ impl Logger for SyncLogger {
     }
 }
 
-pub struct SyncLoggerFactory;
-
-impl Factory for SyncLoggerFactory {
+impl Factory for SyncLogger {
     type Item = Logger;
 
     fn ty() -> &'static str {
         "synchronous"
     }
 
-    fn from(&self, cfg: &Config, registry: &Registry) -> Result<Box<Logger>, Box<::std::error::Error>> {
+    fn from(cfg: &Config, registry: &Registry) -> Result<Box<Logger>, Box<::std::error::Error>> {
         let handlers = cfg.find("handlers")
             .ok_or("field \"handlers\" is required")?
             .as_array()

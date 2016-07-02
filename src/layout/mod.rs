@@ -4,7 +4,7 @@ use record::Record;
 
 mod pattern;
 
-pub use self::pattern::PatternLayoutFactory;
+pub use self::pattern::PatternLayout;
 
 quick_error! {
     #[derive(Debug)]

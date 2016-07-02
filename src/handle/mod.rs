@@ -2,7 +2,7 @@ use Record;
 
 mod sync;
 
-pub use self::sync::SyncHandleFactory;
+pub use self::sync::SyncHandle;
 
 /// Combines a filter, layout and outputs together.
 ///

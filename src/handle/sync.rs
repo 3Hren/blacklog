@@ -5,7 +5,7 @@ use output::Output;
 
 use factory::Factory;
 
-struct SyncHandle {
+pub struct SyncHandle {
     layout: Box<Layout>,
     outputs: Vec<Box<Output>>,
 }
@@ -23,20 +23,18 @@ impl Handle for SyncHandle {
     }
 }
 
-pub struct SyncHandleFactory;
-
-impl Factory for SyncHandleFactory {
+impl Factory for SyncHandle {
     type Item = Handle;
 
     fn ty() -> &'static str {
         "synchronous"
     }
 
-    fn from(&self, cfg: &Config, registry: &Registry) -> Result<Box<Handle>, Box<::std::error::Error>> {
+    fn from(cfg: &Config, registry: &Registry) -> Result<Box<Handle>, Box<::std::error::Error>> {
         let layout = registry.layout(cfg.find("layout").unwrap())?;
 
         let outputs = cfg.find("outputs")
-            .expect("section \"outputs\" is required")
+            .expect("section \"outputs\" is required") // TODO: Drop expect.
             .as_array()
             .expect("section \"outputs\" must be an array")
             .iter()
