@@ -5,9 +5,9 @@ use {Config, Output, Record, Registry};
 
 use factory::Factory;
 
-pub struct Terminal;
+pub struct Term;
 
-impl Output for Terminal {
+impl Output for Term {
     fn write(&self, _rec: &Record, message: &[u8]) -> Result<(), ::std::io::Error> {
         let stdout = ::std::io::stdout();
         let mut wr = stdout.lock();
@@ -16,14 +16,14 @@ impl Output for Terminal {
     }
 }
 
-impl Factory for Terminal {
+impl Factory for Term {
     type Item = Output;
 
     fn ty() -> &'static str {
-        "terminal"
+        "term"
     }
 
     fn from(_cfg: &Config, _registry: &Registry) -> Result<Box<Output>, Box<error::Error>> {
-        Ok(box Terminal)
+        Ok(box Term)
     }
 }

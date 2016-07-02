@@ -38,7 +38,7 @@
 - [ ] Custom pattern layout (lot of examples).
 - [ ] JSON.
 - [ ] Colored output.
-- [ ] Syslog, TCP, UDP, terminal, file (example).
+- [ ] Syslog, TCP, UDP, term, file (example).
 - [ ] Configurable from YAML (example).
 - [ ] Extendable (proof with null appender, promiscuity filter, hash layout).
 - [ ] Composable (example with wrappers).
