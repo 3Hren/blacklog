@@ -1,4 +1,4 @@
-# Planning
+# Planning for 0.2.0
 - [ ] Fully featured pattern layout.
   - [x] Proof of concept.
   - [x] Metalist placeholder.
@@ -7,22 +7,38 @@
   - [x] Precision for meta.
   - [x] Hex, Bin, Debug, etc. types for meta placeholders.
   - [ ] Optional meta.
-  - [ ] Module, line, thread placeholders.  
-- [ ] Fully featured file appender.
-- [ ] Asynchronous logger.
-  - [x] Proof of concept.
+  - [ ] Module, line, thread placeholders.
+- [ ] Layouts.
+  - [ ] Pattern.
+  - [ ] JSON.
+- [ ] Outputs
+  - [ ] Null.
+  - [ ] Term.
+  - [ ] File (with routing).
+  - [ ] TCP.
+  - [ ] UDP.  
+- [ ] Filters.
+  - [ ] Whatever.
+  - [ ] Severity.
+  - [ ] Burst.
+  - [ ] Composite.
+- [ ] Loggers.
+  - [ ] Sync.
+  - [ ] Async logger.
+    - [x] Proof of concept.
+    - [ ] Finish.
+  - [ ] Runtime severity threshold change.
+  - [ ] Runtime filter change.
+  - [ ] Reset at runtime.
 - [ ] Macro or compiler-plugin.
   - [x] Proof of concept.
   - [ ] Compiler plugin.
-- [ ] Reset at runtime.
 - [ ] External configuration.
-  - [x] From generic Deserialize object.
   - [x] From JSON.
   - [ ] Proper error variants, no unwraps.
 - [ ] Integration with default log crate.
-- [ ] ...
-- [ ] Stable Rust support.
 - [ ] Builder pattern for each category.
+- [ ] Stable Rust support.
 
 - [ ] Implement owned timestamp generator instead of interpretation.
 - [ ] Make token generator for pattern layout to act like lightweight pattern.
