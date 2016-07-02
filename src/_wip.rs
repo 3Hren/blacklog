@@ -244,22 +244,6 @@ mod tests {
     use test::Bencher;
 
     #[test]
-    fn sync_logger_send() {
-        fn checker<T: Send>(_v: T) {}
-
-        let log = SyncLogger::new(vec![]);
-        checker(log.clone());
-    }
-
-    #[test]
-    fn async_logger_send() {
-        fn checker<T: Send>(_v: T) {}
-
-        let log = AsyncLogger::new();
-        checker(log.clone());
-    }
-
-    #[test]
     fn log_with_custom_enum() {
         enum Severity {
             Debug,
@@ -281,76 +265,6 @@ mod tests {
         let log = SyncLogger::new(vec![]);
 
         log!(log, Severity::Debug, "file does not exist: /var/www/favicon.ico");
-    }
-
-    #[test]
-    fn log() {
-        let log = AsyncLogger::new();
-
-        // Only severity with message.
-        log!(log, 0, "file does not exist: /var/www/favicon.ico");
-
-        // Add some meta information.
-        log!(log, 0, "file does not exist: /var/www/favicon.ico", {
-            path: "/home",
-        });
-
-        // Delayed formatting.
-        log!(log, 0, "file does not exist: {}", "/var/www/favicon.ico");
-
-        // Alternative syntax for delayed formatting without additional meta information.
-        log!(log, 0, "file does not exist: {}", ["/var/www/favicon.ico"]);
-
-        // Full syntax both with delayed formatting and meta information.
-        log!(log, 0, "file does not exist: {}", ["/var/www/favicon.ico"], {
-            flag: true,
-            path: "/home",
-            path: "/home/esafronov", // Duplicates are allowed as a stacking feature.
-            target: "core",
-            owned: "le message".to_string(),
-        });
-
-        log.scoped(move || "wow");
-    }
-
-    #[test]
-    fn log_fn() {
-        let log = AsyncLogger::new();
-        let val = true;
-
-        fn fact(n: u64) -> u64 {
-            match n {
-                0 | 1 => 1,
-                n => n * fact(n - 1),
-            }
-        };
-
-        // Only severity, message and meta information.
-        log!(log, 0, "file does not exist: /var/www/favicon.ico", {
-            lazy: FnMeta::new(move || { format!("lazy message of {}", val) }),
-            lazy: FnMeta::new(move || val ),
-            lazy: FnMeta::new(move || fact(10)),
-        });
-    }
-
-    #[cfg(feature="benchmark")]
-    #[bench]
-    fn bench_log_message(b: &mut Bencher) {
-        let log = AsyncLogger::new();
-
-        b.iter(|| {
-            log!(log, 0, "file does not exist: /var/www/favicon.ico");
-        });
-    }
-
-    #[cfg(feature="benchmark")]
-    #[bench]
-    fn bench_log_message_sync(b: &mut Bencher) {
-        let log = SyncLogger::new(vec![]);
-
-        b.iter(|| {
-            log!(log, 0, "file does not exist: /var/www/favicon.ico");
-        });
     }
 
     #[cfg(feature="benchmark")]
@@ -389,40 +303,6 @@ mod tests {
 
         b.iter(|| {
             log!(log, 0, "file does not exist: {}", ["/var/www/favicon.ico"], {
-                flag: true,
-                path1: "/home1",
-                path2: "/home2",
-                path3: "/home3",
-                path4: "/home4",
-                path5: "/home5",
-            });
-        });
-    }
-
-    #[cfg(feature="benchmark")]
-    #[bench]
-    fn bench_log_message_with_format_and_meta6_sync(b: &mut Bencher) {
-        let log = SyncLogger::new(vec![]);
-
-        b.iter(|| {
-            log!(log, 0, "file does not exist: {}", ["/var/www/favicon.ico"], {
-                flag: true,
-                path1: "/home1",
-                path2: "/home2",
-                path3: "/home3",
-                path4: "/home4",
-                path5: "/home5",
-            });
-        });
-    }
-
-    #[cfg(feature="benchmark")]
-    #[bench]
-    fn bench_log_message_with_format_and_meta6_reject_sync(b: &mut Bencher) {
-        let log = SyncLogger::new(vec![]);
-
-        b.iter(|| {
-            log!(log, -1, "file does not exist: {}", ["/var/www/favicon.ico"], {
                 flag: true,
                 path1: "/home1",
                 path2: "/home2",
