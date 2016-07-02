@@ -18,7 +18,7 @@
 - [ ] External configuration.
   - [x] From generic Deserialize object.
   - [x] From JSON.
-  - [ ] From YAML.
+  - [ ] Proper error variants, no unwraps.
 - [ ] Integration with default log crate.
 - [ ] ...
 - [ ] Stable Rust support.

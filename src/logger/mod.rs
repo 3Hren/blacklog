@@ -50,20 +50,17 @@ impl Factory for SyncLoggerFactory {
     }
 
     fn from(&self, cfg: &Config, registry: &Registry) -> Result<Box<Logger>, Box<::std::error::Error>> {
-
-        let iter = cfg.find("handlers")
+        let handlers = cfg.find("handlers")
             .ok_or("field \"handlers\" is required")?
             .as_array()
             .ok_or("field \"handlers\" must be an array")?
-            .iter();
+            .iter()
+            .map(|cfg| registry.handle(cfg))
+            .collect()?;
 
-        let mut handlers = Vec::new();
-        for handle in iter {
-            println!("{:?}", handle);
-            handlers.push(registry.handle(handle)?);
-        }
+        let res = box SyncLogger::new(handlers);
 
-        Ok(box SyncLogger::new(handlers))
+        Ok(res)
     }
 }
 
