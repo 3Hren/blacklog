@@ -1,11 +1,11 @@
 use record::Record;
 
-use super::Filter;
+use super::{Filter, FilterAction};
 
-/// A filter that accepts all records.
+/// A filter which is neutral to all records.
 ///
 /// This is the default filter for all components that support filtering.
-struct NullFilter;
+pub struct NullFilter;
 
 impl Filter for NullFilter {
     fn filter(&self, _rec: &Record) -> FilterAction {

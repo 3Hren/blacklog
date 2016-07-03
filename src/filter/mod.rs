@@ -1,5 +1,9 @@
 use record::Record;
 
+mod null;
+
+pub use self::null::NullFilter;
+
 /// Filtering result.
 pub enum FilterAction {
     /// The record should be dropped immediately.
@@ -23,4 +27,12 @@ pub enum FilterAction {
 /// 3. Output filters are used to determine if a logger should route the event to an output.
 pub trait Filter: Send + Sync {
     fn filter(&self, rec: &Record) -> FilterAction;
+}
+
+impl<F> Filter for F
+    where F: Fn(&Record) -> FilterAction + Send + Sync
+{
+    fn filter(&self, rec: &Record) -> FilterAction {
+        self(rec)
+    }
 }
