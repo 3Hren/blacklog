@@ -1,5 +1,5 @@
 //! This example demonstrates how to initialize the Blacklog from the JSON file and write some
-//! messages using it.
+//! messages using it with runtime formatting.
 
 extern crate serde_json;
 #[macro_use] extern crate blacklog;
