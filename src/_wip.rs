@@ -3,7 +3,7 @@ use std::sync::{mpsc, Arc, Mutex};
 use std::sync::atomic::{AtomicI32, Ordering};
 use std::thread::{self, JoinHandle};
 
-use {Record, InactiveRecord, Severity};
+use {Record, Severity};
 
 use super::record::RecordBuf;
 
@@ -39,7 +39,7 @@ impl Filter for NullFilter {
 }
 
 pub trait Logger : Send {
-    fn log<'a>(&self, record: &InactiveRecord<'a>);
+    fn log<'a>(&self, record: &Record<'a>);
 }
 
 trait Handler : Send + Sync {
@@ -125,7 +125,7 @@ impl Handler for SomeHandler {
 }
 
 impl Logger for SyncLogger {
-    fn log<'a>(&self, record: &InactiveRecord<'a>) {
+    fn log<'a>(&self, record: &Record<'a>) {
         if record.severity() >= self.severity.load(Ordering::Relaxed) {
             let record = record.activate();
             let filter = (*self.filter.lock().unwrap()).clone();
@@ -212,7 +212,7 @@ impl AsyncLogger {
 }
 
 impl Logger for AsyncLogger {
-    fn log<'a>(&self, record: &InactiveRecord<'a>) {
+    fn log<'a>(&self, record: &Record<'a>) {
         if record.severity() >= self.inner.severity.load(Ordering::Relaxed) {
             if let Err(..) = self.tx.send(Event::Record(RecordBuf::from(record.activate()))) {
                 // TODO: Return error.

@@ -1,40 +1,62 @@
-use std::sync::Arc;
-use std::sync::atomic::{AtomicI32, Ordering};
+use std::fmt::Arguments;
+use std::sync::{Arc, Mutex};
 
-use {Config, InactiveRecord, Registry};
+use {Config, Registry};
 
+use filter::{Filter, FilterAction, NullFilter};
 use handle::Handle;
+use record::Record;
 
 use factory::Factory;
 
 /// Loggers are, well, responsible for logging. Nuff said.
-pub trait Logger: Send {
+pub trait Logger: Send + Sync {
     // TODO: Return a result, which can be ignored (without #[must_use]).
-    fn log<'a>(&self, record: &InactiveRecord<'a>);
+    fn log<'a, 'b>(&self, rec: &mut Record<'a>, args: Arguments<'b>);
 }
 
+/// # Note
+///
+/// The logger filter acts like a function to make filtering things common, but this may be a
+/// a performance overhead for denied events, because to obtain a filter we mush lock a mutex and
+/// copy a shared pointer containing the filter.
+// TODO: Maybe make logging filtering as a wrapper? This may be useful for both sync and async
+//       logging because for the latter case it's a significant not to copy and clone entire record
+//       that will be denied anyway.
+//       Moreover some people aren't needed a common filtering at all, a simple atomic severity is
+//       enough.
 #[derive(Clone)]
 pub struct SyncLogger {
-    severity: Arc<AtomicI32>,
+    filter: Arc<Mutex<Arc<Box<Filter>>>>,
     handlers: Arc<Vec<Box<Handle>>>,
 }
 
 impl SyncLogger {
     fn new(handlers: Vec<Box<Handle>>) -> SyncLogger {
         SyncLogger {
-            severity: Arc::new(AtomicI32::new(0)),
+            filter: Arc::new(Mutex::new(Arc::new(box NullFilter))),
             handlers: Arc::new(handlers),
         }
+    }
+
+    /// Replaces current logger filter with the given one.
+    pub fn filter(&self, filter: Box<Filter>) {
+        *self.filter.lock().unwrap() = Arc::new(filter);
     }
 }
 
 impl Logger for SyncLogger {
-    fn log<'a>(&self, rec: &InactiveRecord<'a>) {
-        if rec.severity() >= self.severity.load(Ordering::Relaxed) {
-            let mut rec = rec.activate();
+    fn log<'a, 'b>(&self, rec: &mut Record<'a>, args: Arguments<'b>) {
+        let filter = self.filter.lock().unwrap().clone();
 
-            for handle in self.handlers.iter() {
-                handle.handle(&mut rec).unwrap();
+        match filter.filter(&rec) {
+            FilterAction::Deny => {}
+            FilterAction::Accept | FilterAction::Neutral => {
+                rec.activate(args);
+
+                for handle in self.handlers.iter() {
+                    handle.handle(rec).unwrap();
+                }
             }
         }
     }
@@ -65,11 +87,11 @@ impl Factory for SyncLogger {
 #[macro_export]
 macro_rules! log (
     ($log:ident, $sev:expr, $fmt:expr, [$($args:tt)*], {$($name:ident: $val:expr,)*}) => {{
-        $log.log(&$crate::Record::new($sev, line!(), module_path!(), format_args!($fmt, $($args)*),
+        $log.log(&mut $crate::Record::new($sev, line!(), module_path!(),
             &$crate::MetaList::new(&[
                 $($crate::Meta::new(stringify!($name), &$val)),*
             ])
-        ));
+        ), format_args!($fmt, $($args)*));
     }};
     ($log:ident, $sev:expr, $fmt:expr, {$($name:ident: $val:expr,)*}) => {{
         log!($log, $sev, $fmt, [], {$($name: $val,)*})
@@ -88,9 +110,10 @@ macro_rules! log (
 #[cfg(test)]
 mod tests {
     use std::sync::Arc;
-    use std::sync::atomic::{AtomicBool, Ordering};
+    use std::sync::atomic::{AtomicUsize, Ordering};
 
     use {Handle, FnMeta, Record};
+    use filter::FilterAction;
     use super::*;
 
     #[test]
@@ -103,24 +126,24 @@ mod tests {
     #[test]
     fn log_calls_handle() {
         struct MockHandle {
-            flag: Arc<AtomicBool>,
+            counter: Arc<AtomicUsize>,
         }
 
         impl Handle for MockHandle {
             fn handle(&self, rec: &mut Record) -> Result<(), ::std::io::Error> {
                 assert_eq!(0, rec.severity());
-                self.flag.store(true, Ordering::SeqCst);
+                self.counter.fetch_add(1, Ordering::SeqCst);
 
                 Ok(())
             }
         }
 
-        let flag = Arc::new(AtomicBool::new(false));
-        let log = SyncLogger::new(vec![box MockHandle { flag: flag.clone() }]);
+        let counter = Arc::new(AtomicUsize::new(0));
+        let log = SyncLogger::new(vec![box MockHandle { counter: counter.clone() }]);
 
         log!(log, 0, "file does not exist: /var/www/favicon.ico");
 
-        assert_eq!(true, flag.load(Ordering::SeqCst));
+        assert_eq!(1, counter.load(Ordering::SeqCst));
     }
 
     #[test]
@@ -168,12 +191,45 @@ mod tests {
             lazy: FnMeta::new(move || fact(10)),
         });
     }
+
+    #[test]
+    fn log_filter_by_severity() {
+        struct MockHandle {
+            counter: Arc<AtomicUsize>,
+        }
+
+        impl Handle for MockHandle {
+            fn handle(&self, rec: &mut Record) -> Result<(), ::std::io::Error> {
+                self.counter.fetch_add(1, Ordering::SeqCst);
+
+                Ok(())
+            }
+        }
+
+        let counter = Arc::new(AtomicUsize::new(0));
+        let log = SyncLogger::new(vec![box MockHandle { counter: counter.clone() }]);
+
+        log.filter(box |rec: &Record| {
+            if rec.severity() >= 1 {
+                FilterAction::Neutral
+            } else {
+                FilterAction::Deny
+            }
+        });
+
+        log!(log, 0, "");
+        assert_eq!(0, counter.load(Ordering::SeqCst));
+        log!(log, 1, "");
+        assert_eq!(1, counter.load(Ordering::SeqCst));
+    }
 }
 
 #[cfg(feature="benchmark")]
 mod bench {
     use test::Bencher;
 
+    use filter::FilterAction;
+    use record::Record;
     use super::*;
 
     #[bench]
@@ -204,9 +260,49 @@ mod bench {
     #[bench]
     fn log_message_with_format_and_meta6_reject(b: &mut Bencher) {
         let log = SyncLogger::new(vec![]);
+        log.filter(box |_rec: &Record| {
+            FilterAction::Deny
+        });
 
         b.iter(|| {
-            log!(log, -1, "file does not exist: {}", ["/var/www/favicon.ico"], {
+            log!(log, 0, "file does not exist: {}", ["/var/www/favicon.ico"], {
+                flag: true,
+                path1: "/home1",
+                path2: "/home2",
+                path3: "/home3",
+                path4: "/home4",
+                path5: "/home5",
+            });
+        });
+    }
+
+    #[bench]
+    fn log_message_with_format_and_meta6_reject_fast(b: &mut Bencher) {
+        use std::fmt::Arguments;
+        use std::sync::Arc;
+        use std::sync::atomic::{AtomicIsize, Ordering};
+
+        struct FastFilterLogger {
+            sev: Arc<AtomicIsize>,
+            wrapped: Arc<Box<Logger>>,
+        }
+
+        impl Logger for FastFilterLogger {
+            fn log<'a, 'b>(&self, rec: &mut Record<'a>, args: Arguments<'b>) {
+                if rec.severity() >= self.sev.load(Ordering::Relaxed) as i32 {
+                    self.wrapped.log(rec, args);
+                }
+            }
+        }
+
+        let log = SyncLogger::new(vec![]);
+        let log = FastFilterLogger {
+            sev: Arc::new(AtomicIsize::new(1)),
+            wrapped: Arc::new(box log),
+        };
+
+        b.iter(|| {
+            log!(log, 0, "file does not exist: {}", ["/var/www/favicon.ico"], {
                 flag: true,
                 path1: "/home1",
                 path2: "/home2",

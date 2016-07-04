@@ -8,7 +8,7 @@ use {MetaBuf, MetaList};
 use meta::MetaListIter;
 
 /// Logging event context contains an information about where the event was created including the
-/// source code location and thread number.
+/// source code location and thread id.
 #[derive(Copy, Clone)]
 struct Context {
     /// The line number on which the logging event was created.
@@ -19,16 +19,6 @@ struct Context {
     thread: usize,
 }
 
-// TODO: When filtering we can pass both Record and RecordBuf. That's why we may need a trait to
-// unite them.
-#[derive(Copy, Clone)]
-pub struct InactiveRecord<'a> {
-    sev: i32,
-    format: Arguments<'a>,
-    context: Context,
-    meta: &'a MetaList<'a>,
-}
-
 // TODO: Zero-copy optimization.
 // #[derive(Copy, Clone)]
 // enum Message<'a> {
@@ -36,17 +26,24 @@ pub struct InactiveRecord<'a> {
 //     Readonly(&'static str),
 // }
 
+/// Contains all necessary information about logging event and acts like a transport.
+///
+/// # Note
+///
+/// For performance reasons all records are created in inactive state, without timestamp and
+/// formatted message. It must be explicitly activated after filtering but before handling to make
+/// all things act in a proper way.
 #[derive(Clone)]
 pub struct Record<'a> {
     sev: i32,
     message: Cow<'static, str>,
-    timestamp: DateTime<UTC>,
+    timestamp: Option<DateTime<UTC>>,
     context: Context,
     meta: &'a MetaList<'a>,
 }
 
 impl<'a> Record<'a> {
-    pub fn new<T>(sev: T, line: u32, module: &'static str, format: Arguments<'a>, meta: &'a MetaList<'a>) -> InactiveRecord<'a>
+    pub fn new<T>(sev: T, line: u32, module: &'static str, meta: &'a MetaList<'a>) -> Record<'a>
         where i32: From<T>
     {
         let context = Context {
@@ -55,9 +52,10 @@ impl<'a> Record<'a> {
             thread: super::thread::id(),
         };
 
-        InactiveRecord {
+        Record {
             sev: From::from(sev),
-            format: format,
+            message: Cow::Borrowed(""),
+            timestamp: None,
             context: context,
             meta: meta,
         }
@@ -67,12 +65,13 @@ impl<'a> Record<'a> {
         Record {
             sev: rec.sev,
             message: rec.message.clone(),
-            timestamp: rec.timestamp,
+            timestamp: Some(rec.timestamp),
             context: rec.context,
             meta: metalist,
         }
     }
 
+    /// Returns a severity number as `i32` that was set during this record creation.
     pub fn severity(&self) -> i32 {
         self.sev
     }
@@ -82,7 +81,8 @@ impl<'a> Record<'a> {
     }
 
     pub fn timestamp(&self) -> &DateTime<UTC> {
-        &self.timestamp
+        // TODO: Bettern to return by value then.
+        &self.timestamp.as_ref().unwrap()
     }
 
     pub fn line(&self) -> u32 {
@@ -100,25 +100,14 @@ impl<'a> Record<'a> {
     pub fn iter(&self) -> MetaListIter<'a> {
         self.meta.iter()
     }
+
+    pub fn activate<'b>(&mut self, format: Arguments<'b>) {
+        self.message = Cow::Owned(format!("{}", format));
+        self.timestamp = Some(UTC::now());
+    }
 }
 
 // TODO: impl ExactSizeIterator, DoubleEndedIterator, IntoIterator, FromIterator.
-
-impl<'a> InactiveRecord<'a> {
-    pub fn activate(self) -> Record<'a> {
-        Record {
-            sev: self.sev,
-            message: Cow::Owned(format!("{}", self.format)),
-            timestamp: UTC::now(),
-            context: self.context,
-            meta: self.meta,
-        }
-    }
-
-    pub fn severity(&self) -> i32 {
-        self.sev
-    }
-}
 
 pub struct RecordBuf {
     timestamp: DateTime<UTC>,
@@ -132,7 +121,7 @@ pub struct RecordBuf {
 impl<'a> From<Record<'a>> for RecordBuf {
     fn from(val: Record<'a>) -> RecordBuf {
         RecordBuf {
-            timestamp: val.timestamp,
+            timestamp: val.timestamp.unwrap(),
             sev: val.sev,
             context: val.context,
             message: val.message,
@@ -144,7 +133,7 @@ impl<'a> From<Record<'a>> for RecordBuf {
 impl<'a> From<&'a Record<'a>> for RecordBuf {
     fn from(val: &'a Record<'a>) -> RecordBuf {
         RecordBuf {
-            timestamp: val.timestamp,
+            timestamp: val.timestamp.unwrap(),
             sev: val.sev,
             context: val.context,
             message: val.message.clone(),
@@ -158,29 +147,22 @@ mod tests {
     use {Meta, MetaList};
     use super::*;
 
-    #[cfg(feature="benchmark")]
-    use test::Bencher;
-
-    #[test]
-    fn inactive_severity() {
-        assert_eq!(0, Record::new(0, 0, "", format_args!(""), &MetaList::new(&[])).severity());
-    }
+    // #[cfg(feature="benchmark")]
+    // use test::Bencher;
 
     #[test]
     fn severity() {
-        assert_eq!(0, Record::new(0, 0, "", format_args!(""), &MetaList::new(&[]))
-            .activate()
-            .severity());
+        assert_eq!(0, Record::new(0, 0, "", &MetaList::new(&[])).severity());
     }
 
     #[test]
     fn iter() {
-        assert_eq!(4, Record::new(0, 0, "", format_args!(""), &MetaList::new(&[
+        assert_eq!(4, Record::new(0, 0, "", &MetaList::new(&[
             Meta::new("n#1", &"v#1"),
             Meta::new("n#2", &"v#2"),
             Meta::new("n#3", &"v#3"),
             Meta::new("n#4", &"v#4"),
-        ])).activate().iter().count());
+        ])).iter().count());
     }
 
     #[test]
@@ -201,7 +183,7 @@ mod tests {
         let metalist1 = MetaList::new(meta1);
         let metalist2 = MetaList::next(meta2, Some(&metalist1));
 
-        run(&Record::new(0, 0, "", format_args!(""), &metalist2).activate());
+        run(&Record::new(0, 0, "", &metalist2));
     }
 
     #[test]
@@ -228,6 +210,8 @@ mod tests {
         let meta = &[Meta::new("n#1", &v), Meta::new("n#2", &v)];
         let metalist = MetaList::new(meta);
 
-        run(&Record::new(1, 2, "mod", format_args!("message"), &metalist).activate());
+        let mut rec = Record::new(1, 2, "mod", &metalist);
+        rec.activate(format_args!("message"));
+        run(&rec);
     }
 }

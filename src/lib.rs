@@ -1,7 +1,6 @@
 #![cfg_attr(feature="benchmark", feature(test))]
 
 #![feature(box_syntax)]
-#![feature(integer_atomics)]
 #![feature(plugin)]
 #![feature(question_mark)]
 #![feature(unicode)]
@@ -15,6 +14,7 @@ extern crate serde_json;
 #[macro_use] extern crate quick_error;
 
 mod factory;
+mod filter;
 mod handle;
 mod layout;
 mod logger;
@@ -25,13 +25,14 @@ mod registry;
 mod severity;
 mod thread;
 
+pub use self::filter::Filter;
 pub use self::handle::Handle;
 pub use self::layout::Layout;
 pub use self::logger::Logger;
 pub use self::meta::{FnMeta, Meta, MetaBuf, MetaList};
 pub use self::meta::format::{Format, Formatter, IntoBoxedFormat};
 pub use self::output::Output;
-pub use self::record::{Record, InactiveRecord};
+pub use self::record::{Record};
 pub use self::registry::{Config, Registry};
 pub use self::severity::Severity;
 
