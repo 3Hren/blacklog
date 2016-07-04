@@ -19,11 +19,12 @@ struct Context {
     thread: usize,
 }
 
-// TODO: Zero-copy optimization.
+// TODO: Zero-copy optimization, but only for cases without placeholders. Don't know how to do it
+// without compiler plugin for now. Or... with explicit macro syntax rules.
 // #[derive(Copy, Clone)]
 // enum Message<'a> {
-//     Ready(&'a str),
-//     Readonly(&'static str),
+//     Formatted(&'a str),
+//     Immutable(&'static str),
 // }
 
 /// Contains all necessary information about logging event and acts like a transport.
@@ -35,6 +36,8 @@ struct Context {
 /// all things act in a proper way.
 #[derive(Clone)]
 pub struct Record<'a> {
+    // TODO: Maybe it's reasonable to keep this i32 + &'static Format to make severity formattable
+    // without explicit function provisioning in layouts.
     sev: i32,
     message: Cow<'static, str>,
     timestamp: Option<DateTime<UTC>>,
