@@ -70,17 +70,29 @@ impl<F: SevMap> Layout for PatternLayout<F> {
                 TokenBuf::Severity(Some(spec), SeverityType::Num) => {
                     rec.severity().format(&mut Formatter::new(wr, spec.into()))?
                 }
-                TokenBuf::Severity(Some(spec), SeverityType::String) => {
+                TokenBuf::Severity(Some(_spec), SeverityType::String) => {
                     // Format all.
-                    unimplemented!();
-                }
-                TokenBuf::TimestampNum(None) => {
-                    // Format as seconds (or microseconds) elapsed from Unix epoch.
                     unimplemented!();
                 }
                 TokenBuf::Timestamp(None, ref pattern, Timezone::Utc) => {
                     // TODO: Replace with write! macro. Measure.
                     wr.write_all(format!("{}", rec.timestamp().format(&pattern)).as_bytes())?
+                }
+                TokenBuf::TimestampNum(None) => {
+                    // Format as seconds (or microseconds) elapsed from Unix epoch.
+                    unimplemented!();
+                }
+                TokenBuf::Line(None) => {
+                    rec.line().format(&mut Formatter::new(wr, Default::default()))?
+                }
+                TokenBuf::Line(Some(_spec)) => {
+                    unimplemented!();
+                }
+                TokenBuf::Module(None) => {
+                    wr.write_all(rec.module().as_bytes())?
+                }
+                TokenBuf::Module(Some(spec)) => {
+                    rec.module().format(&mut Formatter::new(wr, spec.into()))?
                 }
                 TokenBuf::Meta(ref name, None) => {
                     let meta = rec.iter().find(|meta| meta.name == name)
@@ -561,5 +573,41 @@ mod tests {
         layout.format(&rec, &mut buf).unwrap();
 
         assert_eq!("num: 42, name: Vasya", from_utf8(&buf[..]).unwrap());
+    }
+
+    #[test]
+    fn module() {
+        let layout = PatternLayout::new("{module}").unwrap();
+
+        let mut buf = Vec::new();
+        let metalist = MetaList::new(&[]);
+        let mut rec = Record::new(0, 0, module_path!(), &metalist);
+        layout.format(&rec, &mut buf).unwrap();
+
+        assert_eq!("blacklog::layout::pattern::tests", from_utf8(&buf[..]).unwrap());
+    }
+
+    #[test]
+    fn module_with_spec() {
+        let layout = PatternLayout::new("{module:/^14.12}").unwrap();
+
+        let mut buf = Vec::new();
+        let metalist = MetaList::new(&[]);
+        let mut rec = Record::new(0, 0, module_path!(), &metalist);
+        layout.format(&rec, &mut buf).unwrap();
+
+        assert_eq!("/blacklog::la/", from_utf8(&buf[..]).unwrap());
+    }
+
+    #[test]
+    fn line() {
+        let layout = PatternLayout::new("{line}").unwrap();
+
+        let mut buf = Vec::new();
+        let metalist = MetaList::new(&[]);
+        let mut rec = Record::new(0, 666, "", &metalist);
+        layout.format(&rec, &mut buf).unwrap();
+
+        assert_eq!("666", from_utf8(&buf[..]).unwrap());
     }
 }

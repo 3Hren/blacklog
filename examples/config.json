@@ -5,7 +5,7 @@
             "type": "synchronous",
             "layout": {
                 "type": "pattern",
-                "pattern": "{severity}, [{timestamp}]: {message}"
+                "pattern": "{severity}, [{timestamp}] {module:>8.8}:{line}: {message}"
             },
             "outputs": [
                 {
