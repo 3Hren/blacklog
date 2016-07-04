@@ -20,6 +20,7 @@ pub enum FilterAction {
 /// Filters are responsible for filtering logging events.
 ///
 /// Filters may be configured in one of three locations:
+///
 /// 1. Logger filters are configured on a specified Logger. Events that are rejected by these
 ///    filters will be discarded.
 /// 2. Handle filters are used to determine if a specific Handle should handle the formatting and
