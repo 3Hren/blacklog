@@ -25,6 +25,12 @@ pub trait Logger: Send + Sync {
 //       that will be denied anyway.
 //       Moreover some people aren't needed a common filtering at all, a simple atomic severity is
 //       enough.
+//       How then to implement an early accept?
+//          1. Through record flag - fairly easy, becasuse records are already mut, but conceptually
+//             it's bad, because it's impossible to disable logging at all.
+//          2. Through hook - bad - wrapped logger must be immutable.
+//          3. Through `log_nofilter()` method - bad - ugly.
+//          *. Forbid hierarchical filters, only linear.
 #[derive(Clone)]
 pub struct SyncLogger {
     filter: Arc<Mutex<Arc<Box<Filter>>>>,
