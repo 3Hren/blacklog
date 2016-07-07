@@ -15,37 +15,6 @@ use meta::format::FormatInto;
 
 type Error = ::std::io::Error;
 
-enum FilterAction {
-    Deny,
-    Accept,
-    Neutral,
-}
-
-/// Filters are responsible for filtering logging events.
-///
-/// # Note
-///
-/// All filters must satisfy Sync trait to be safely usable from multiple threads.
-trait Filter : Send + Sync {
-    fn filter<'a>(&self, rec: &Record<'a>) -> FilterAction;
-}
-
-struct NullFilter;
-
-impl Filter for NullFilter {
-    fn filter<'a>(&self, _rec: &Record<'a>) -> FilterAction {
-        FilterAction::Neutral
-    }
-}
-
-pub trait Logger : Send {
-    fn log<'a>(&self, record: &Record<'a>);
-}
-
-trait Handler : Send + Sync {
-    fn handle(&self, rec: &mut Record);
-}
-
 #[derive(Clone)]
 struct SyncLogger {
     handlers: Arc<Vec<Box<Handler>>>,
@@ -121,28 +90,6 @@ impl SomeHandler {
 impl Handler for SomeHandler {
     fn handle<'a>(&self, rec: &mut Record<'a>) {
         self.handle_(rec, &self.mutants[..])
-    }
-}
-
-impl Logger for SyncLogger {
-    fn log<'a>(&self, record: &Record<'a>) {
-        if record.severity() >= self.severity.load(Ordering::Relaxed) {
-            let record = record.activate();
-            let filter = (*self.filter.lock().unwrap()).clone();
-
-            match filter.filter(&record) {
-                FilterAction::Deny => {}
-                FilterAction::Accept | FilterAction::Neutral => {
-                    for handler in self.handlers.iter() {
-                        // copy record, make mut.
-                        // add new meta.
-                        // mutate(possible reset meta?)
-                    }
-                    // record.activate().
-                    // .
-                }
-            }
-        }
     }
 }
 
