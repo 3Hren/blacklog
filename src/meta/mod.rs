@@ -32,8 +32,8 @@ impl<'a> Meta<'a> {
 
 /// Linked list of meta information containers. Used to composite various meta containers.
 pub struct MetaList<'a> {
-    prev: Option<&'a MetaList<'a>>,
     meta: &'a [Meta<'a>],
+    prev: Option<&'a MetaList<'a>>,
 }
 
 impl<'a> MetaList<'a> {
@@ -44,17 +44,17 @@ impl<'a> MetaList<'a> {
 
     pub fn next(meta: &'a [Meta<'a>], prev: Option<&'a MetaList<'a>>) -> MetaList<'a> {
         MetaList {
-            prev: prev,
             meta: meta,
+            prev: prev,
         }
-    }
-
-    pub fn prev(&self) -> Option<&'a MetaList<'a>> {
-        self.prev
     }
 
     pub fn meta(&self) -> &[Meta<'a>] {
         self.meta
+    }
+
+    pub fn prev(&self) -> Option<&'a MetaList<'a>> {
+        self.prev
     }
 
     pub fn iter(&'a self) -> MetaListIter<'a> {
