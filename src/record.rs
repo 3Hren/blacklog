@@ -100,6 +100,11 @@ impl<'a> Record<'a> {
         self.context.thread
     }
 
+    /// Returns an iterator over the meta attributes of a record.
+    ///
+    /// As a record contains optionally chained lists of meta information (aka attributes), we can
+    /// iterate through in direct order there were chained to emulate some kind of priorities. This
+    /// method returns such an iterator.
     pub fn iter(&self) -> MetaListIter<'a> {
         self.meta.iter()
     }

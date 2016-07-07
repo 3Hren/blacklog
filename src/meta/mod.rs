@@ -10,8 +10,8 @@ pub use self::func::FnMeta;
 ///
 /// This struct represent one of the core blacklog feature - meta informations that are optionally
 /// attached to every logging message and travels with it.
-/// There are some predefined attributes, like message, severity, timestamp, module etc. All other
-/// are represented using this struct.
+/// There are some predefined attributes: message, severity, timestamp, module, line. All other are
+/// represented using this struct.
 #[derive(Copy, Clone)]
 pub struct Meta<'a> {
     /// Name.
