@@ -19,7 +19,7 @@ mod func;
 pub struct Meta<'a> {
     /// Name.
     pub name: &'static str,
-    /// Value reference.
+    /// Formattable value reference.
     pub value: &'a FormatInto,
 }
 
