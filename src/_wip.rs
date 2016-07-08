@@ -52,7 +52,7 @@ impl FalloutMutant {
     fn mutate(&self, rec: &mut Record, f: &Fn(&mut Record)) {
         let v = 42;
         let m = &[Meta::new("a1", &v)];
-        // let meta = MetaList::next(m, Some(rec.meta));
+        // let meta = MetaLink::next(m, Some(rec.meta));
         // let mut rec2 = *rec;
         // rec2.meta = &meta;
 

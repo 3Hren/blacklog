@@ -11,7 +11,7 @@ use chrono::naive::date::NaiveDate;
 use chrono::naive::datetime::NaiveDateTime;
 use chrono::naive::time::NaiveTime;
 
-use blacklog::{Meta, MetaList, Record};
+use blacklog::{Meta, MetaLink, Record};
 
 #[bench]
 fn chrono_from_timestamp(b: &mut Bencher) {
@@ -36,7 +36,7 @@ fn chrono_new(b: &mut Bencher) {
 #[bench]
 fn new(b: &mut Bencher) {
     b.iter(|| {
-        Record::new(0, line!(), module_path!(), &MetaList::new(&[]));
+        Record::new(0, line!(), module_path!(), &MetaLink::new(&[]));
     });
 }
 
@@ -46,7 +46,7 @@ fn new(b: &mut Bencher) {
 fn new_with_format_and_meta6(b: &mut Bencher) {
     b.iter(|| {
         Record::new(0, line!(), module_path!(),
-            &MetaList::new(&[Meta::new("meta#1", &42),
+            &MetaLink::new(&[Meta::new("meta#1", &42),
             Meta::new("meta#1", &42),
             Meta::new("meta#1", &42),
             Meta::new("meta#1", &42),

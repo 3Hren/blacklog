@@ -3,9 +3,9 @@ use std::borrow::Cow;
 
 use chrono::{DateTime, UTC};
 
-use {MetaBuf, MetaList};
+use {MetaBuf, MetaLink};
 
-use meta::MetaListIter;
+use meta::MetaLinkIter;
 
 /// Logging event context contains an information about where the event was created including the
 /// source code location and thread id.
@@ -42,11 +42,11 @@ pub struct Record<'a> {
     message: Cow<'static, str>,
     timestamp: Option<DateTime<UTC>>,
     context: Context,
-    meta: &'a MetaList<'a>,
+    metalink: &'a MetaLink<'a>, // TODO: Naming?
 }
 
 impl<'a> Record<'a> {
-    pub fn new<T>(sev: T, line: u32, module: &'static str, meta: &'a MetaList<'a>) -> Record<'a>
+    pub fn new<T>(sev: T, line: u32, module: &'static str, metalink: &'a MetaLink<'a>) -> Record<'a>
         where i32: From<T>
     {
         let context = Context {
@@ -60,17 +60,17 @@ impl<'a> Record<'a> {
             message: Cow::Borrowed(""),
             timestamp: None,
             context: context,
-            meta: meta,
+            metalink: metalink,
         }
     }
 
-    fn from_owned(rec: &'a RecordBuf, metalist: &'a MetaList<'a>) -> Record<'a> {
+    fn from_owned(rec: &'a RecordBuf, metalink: &'a MetaLink<'a>) -> Record<'a> {
         Record {
             sev: rec.sev,
             message: rec.message.clone(),
             timestamp: Some(rec.timestamp),
             context: rec.context,
-            meta: metalist,
+            metalink: metalink,
         }
     }
 
@@ -102,11 +102,11 @@ impl<'a> Record<'a> {
 
     /// Returns an iterator over the meta attributes of a record.
     ///
-    /// As a record contains optionally chained lists of meta information (aka attributes), we can
-    /// iterate through in direct order there were chained to emulate some kind of priorities. This
-    /// method returns such an iterator.
-    pub fn iter(&self) -> MetaListIter<'a> {
-        self.meta.iter()
+    /// As a record contains optionally chained lists of meta information (which is also known as
+    /// attributes), we can iterate through in direct order there were chained to emulate some kind
+    /// of priorities. This method returns such an iterator.
+    pub fn iter(&self) -> MetaLinkIter<'a> {
+        self.metalink.iter()
     }
 
     pub fn activate<'b>(&mut self, format: Arguments<'b>) {
@@ -133,7 +133,7 @@ impl<'a> From<Record<'a>> for RecordBuf {
             sev: val.sev,
             context: val.context,
             message: val.message,
-            meta: From::from(val.meta),
+            meta: From::from(val.metalink),
         }
     }
 }
@@ -145,14 +145,14 @@ impl<'a> From<&'a Record<'a>> for RecordBuf {
             sev: val.sev,
             context: val.context,
             message: val.message.clone(),
-            meta: From::from(val.meta),
+            meta: From::from(val.metalink),
         }
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use {Meta, MetaList};
+    use {Meta, MetaLink};
     use super::*;
 
     // #[cfg(feature="benchmark")]
@@ -160,12 +160,12 @@ mod tests {
 
     #[test]
     fn severity() {
-        assert_eq!(0, Record::new(0, 0, "", &MetaList::new(&[])).severity());
+        assert_eq!(0, Record::new(0, 0, "", &MetaLink::new(&[])).severity());
     }
 
     #[test]
     fn iter() {
-        assert_eq!(4, Record::new(0, 0, "", &MetaList::new(&[
+        assert_eq!(4, Record::new(0, 0, "", &MetaLink::new(&[
             Meta::new("n#1", &"v#1"),
             Meta::new("n#2", &"v#2"),
             Meta::new("n#3", &"v#3"),
@@ -178,20 +178,20 @@ mod tests {
         fn run(rec: &Record) {
             let mut iter = rec.iter();
 
-            assert_eq!("n#3", iter.next().unwrap().name);
-            assert_eq!("n#4", iter.next().unwrap().name);
             assert_eq!("n#1", iter.next().unwrap().name);
             assert_eq!("n#2", iter.next().unwrap().name);
+            assert_eq!("n#3", iter.next().unwrap().name);
+            assert_eq!("n#4", iter.next().unwrap().name);
             assert!(iter.next().is_none());
         }
 
         let v = 42;
         let meta1 = &[Meta::new("n#1", &v), Meta::new("n#2", &v)];
         let meta2 = &[Meta::new("n#3", &v), Meta::new("n#4", &v)];
-        let metalist1 = MetaList::new(meta1);
-        let metalist2 = MetaList::next(meta2, Some(&metalist1));
+        let metalink1 = MetaLink::new(meta1);
+        let metalink2 = MetaLink::chained(meta2, &metalink1);
 
-        run(&Record::new(0, 0, "", &metalist2));
+        run(&Record::new(0, 0, "", &metalink2));
     }
 
     #[test]
@@ -199,7 +199,7 @@ mod tests {
         fn run(rec: &Record) {
             let owned = RecordBuf::from(rec);
             let meta = owned.meta.iter().map(Into::into).collect::<Vec<Meta>>();
-            let metalist = MetaList::new(&meta);
+            let metalist = MetaLink::new(&meta);
             let borrow = Record::from_owned(&owned, &metalist);
 
             assert_eq!(1, borrow.severity());
@@ -216,7 +216,7 @@ mod tests {
 
         let v = 42;
         let meta = &[Meta::new("n#1", &v), Meta::new("n#2", &v)];
-        let metalist = MetaList::new(meta);
+        let metalist = MetaLink::new(meta);
 
         let mut rec = Record::new(1, 2, "mod", &metalist);
         rec.activate(format_args!("message"));

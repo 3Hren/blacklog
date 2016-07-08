@@ -155,7 +155,7 @@ mod tests {
     #[cfg(feature="benchmark")]
     use test::Bencher;
 
-    use {Meta, MetaList, Record, Severity};
+    use {Meta, MetaLink, Record, Severity};
     use layout::Layout;
     use layout::pattern::{PatternLayout, SevMap};
     use layout::pattern::grammar::{FormatSpec, SeverityType};
@@ -164,7 +164,7 @@ mod tests {
     // TODO: Seems quite required for other testing modules. Maybe move into `record` module?
     macro_rules! record {
         ($sev:expr, {$($name:ident: $val:expr,)*}) => {
-            Record::new($sev, line!(), module_path!(), &$crate::MetaList::new(&[
+            Record::new($sev, line!(), module_path!(), &$crate::MetaLink::new(&[
                 $($crate::Meta::new(stringify!($name), &$val)),*
             ]))
         };
@@ -175,8 +175,8 @@ mod tests {
         let layout = PatternLayout::new("").unwrap();
 
         let mut buf = Vec::new();
-        let metalist = MetaList::new(&[]);
-        let rec = Record::new(0, 0, "", &metalist);
+        let metalink = MetaLink::new(&[]);
+        let rec = Record::new(0, 0, "", &metalink);
         layout.format(&rec, &mut buf).unwrap();
 
         assert_eq!("", from_utf8(&buf[..]).unwrap());
@@ -187,8 +187,8 @@ mod tests {
         let layout = PatternLayout::new("hello").unwrap();
 
         let mut buf = Vec::new();
-        let metalist = MetaList::new(&[]);
-        let rec = Record::new(0, 0, "", &metalist);
+        let metalink = MetaLink::new(&[]);
+        let rec = Record::new(0, 0, "", &metalink);
         layout.format(&rec, &mut buf).unwrap();
 
         assert_eq!("hello", from_utf8(&buf[..]).unwrap());
@@ -199,8 +199,8 @@ mod tests {
         let layout = PatternLayout::new("hello {{ world }}").unwrap();
 
         let mut buf = Vec::new();
-        let metalist = MetaList::new(&[]);
-        let rec = Record::new(0, 0, "", &metalist);
+        let metalink = MetaLink::new(&[]);
+        let rec = Record::new(0, 0, "", &metalink);
         layout.format(&rec, &mut buf).unwrap();
 
         assert_eq!("hello { world }", from_utf8(&buf[..]).unwrap());
@@ -211,8 +211,8 @@ mod tests {
         let layout = PatternLayout::new("message: {message}").unwrap();
 
         let mut buf = Vec::new();
-        let metalist = MetaList::new(&[]);
-        let mut rec = Record::new(0, 0, "", &metalist);
+        let metalink = MetaLink::new(&[]);
+        let mut rec = Record::new(0, 0, "", &metalink);
         rec.activate(format_args!("value"));
         layout.format(&rec, &mut buf).unwrap();
 
@@ -232,8 +232,8 @@ mod tests {
             });
         };
 
-        let metalist = MetaList::new(&[]);
-        let mut rec = Record::new(0, 0, "", &metalist);
+        let metalink = MetaLink::new(&[]);
+        let mut rec = Record::new(0, 0, "", &metalink);
         rec.activate(format_args!("value"));
         run(&rec, b);
     }
@@ -243,8 +243,8 @@ mod tests {
         let layout = PatternLayout::new("[{message:<10}]").unwrap();
 
         let mut buf = Vec::new();
-        let metalist = MetaList::new(&[]);
-        let mut rec = Record::new(0, 0, "", &metalist);
+        let metalink = MetaLink::new(&[]);
+        let mut rec = Record::new(0, 0, "", &metalink);
         rec.activate(format_args!("value"));
         layout.format(&rec, &mut buf).unwrap();
 
@@ -256,8 +256,8 @@ mod tests {
         let layout = PatternLayout::new("[{message:.<10}]").unwrap();
 
         let mut buf = Vec::new();
-        let metalist = MetaList::new(&[]);
-        let mut rec = Record::new(0, 0, "", &metalist);
+        let metalink = MetaLink::new(&[]);
+        let mut rec = Record::new(0, 0, "", &metalink);
         rec.activate(format_args!("value"));
         layout.format(&rec, &mut buf).unwrap();
 
@@ -269,8 +269,8 @@ mod tests {
         let layout = PatternLayout::new("[{message:<0}]").unwrap();
 
         let mut buf = Vec::new();
-        let metalist = MetaList::new(&[]);
-        let mut rec = Record::new(0, 0, "", &metalist);
+        let metalink = MetaLink::new(&[]);
+        let mut rec = Record::new(0, 0, "", &metalink);
         rec.activate(format_args!("value"));
         layout.format(&rec, &mut buf).unwrap();
 
@@ -282,8 +282,8 @@ mod tests {
         let layout = PatternLayout::new("{message:/^6.4}").unwrap();
 
         let mut buf = Vec::new();
-        let metalist = MetaList::new(&[]);
-        let mut rec = Record::new(0, 0, "", &metalist);
+        let metalink = MetaLink::new(&[]);
+        let mut rec = Record::new(0, 0, "", &metalink);
         rec.activate(format_args!("100500"));
         layout.format(&rec, &mut buf).unwrap();
 
@@ -304,8 +304,8 @@ mod tests {
             });
         }
 
-        let metalist = MetaList::new(&[]);
-        let mut rec = Record::new(0, 0, "", &metalist);
+        let metalink = MetaLink::new(&[]);
+        let mut rec = Record::new(0, 0, "", &metalink);
         rec.activate(format_args!("value"));
         run(&rec, b);
     }
@@ -316,8 +316,8 @@ mod tests {
         let layout = PatternLayout::new("[{severity}]").unwrap();
 
         let mut buf = Vec::new();
-        let metalist = MetaList::new(&[]);
-        let rec = Record::new(0, 0, "", &metalist);
+        let metalink = MetaLink::new(&[]);
+        let rec = Record::new(0, 0, "", &metalink);
         layout.format(&rec, &mut buf).unwrap();
 
         assert_eq!("[0]", from_utf8(&buf[..]).unwrap());
@@ -328,8 +328,8 @@ mod tests {
         let layout = PatternLayout::new("[{severity:d}]").unwrap();
 
         let mut buf = Vec::new();
-        let metalist = MetaList::new(&[]);
-        let rec = Record::new(4, 0, "", &metalist);
+        let metalink = MetaLink::new(&[]);
+        let rec = Record::new(4, 0, "", &metalink);
         layout.format(&rec, &mut buf).unwrap();
 
         assert_eq!("[4]", from_utf8(&buf[..]).unwrap());
@@ -355,8 +355,8 @@ mod tests {
         let layout = PatternLayout::with("[{severity}]", Mapping).unwrap();
 
         let mut buf = Vec::new();
-        let metalist = MetaList::new(&[]);
-        let rec = Record::new(2, 0, "", &metalist);
+        let metalink = MetaLink::new(&[]);
+        let rec = Record::new(2, 0, "", &metalink);
         layout.format(&rec, &mut buf).unwrap();
 
         assert_eq!("[DEBUG]", from_utf8(&buf[..]).unwrap());
@@ -382,8 +382,8 @@ mod tests {
         let layout = PatternLayout::with("[{severity:d}]", Mapping).unwrap();
 
         let mut buf = Vec::new();
-        let metalist = MetaList::new(&[]);
-        let rec = Record::new(2, 0, "", &metalist);
+        let metalink = MetaLink::new(&[]);
+        let rec = Record::new(2, 0, "", &metalink);
         layout.format(&rec, &mut buf).unwrap();
 
         assert_eq!("[2]", from_utf8(&buf[..]).unwrap());
@@ -394,8 +394,8 @@ mod tests {
         let layout = PatternLayout::new("[{severity:/^3d}]").unwrap();
 
         let mut buf = Vec::new();
-        let metalist = MetaList::new(&[]);
-        let rec = Record::new(4, 0, "", &metalist);
+        let metalink = MetaLink::new(&[]);
+        let rec = Record::new(4, 0, "", &metalink);
         layout.format(&rec, &mut buf).unwrap();
 
         assert_eq!("[/4/]", from_utf8(&buf[..]).unwrap());
@@ -406,8 +406,8 @@ mod tests {
         let layout = PatternLayout::new("{severity:d}: {message}").unwrap();
 
         let mut buf = Vec::new();
-        let metalist = MetaList::new(&[]);
-        let mut rec = Record::new(2, 0, "", &metalist);
+        let metalink = MetaLink::new(&[]);
+        let mut rec = Record::new(2, 0, "", &metalink);
         rec.activate(format_args!("value"));
         layout.format(&rec, &mut buf).unwrap();
 
@@ -428,8 +428,8 @@ mod tests {
             });
         }
 
-        let metalist = MetaList::new(&[]);
-        let rec = Record::new(0, 0, "", &metalist);
+        let metalink = MetaLink::new(&[]);
+        let rec = Record::new(0, 0, "", &metalink);
         run(&rec, b);
     }
 
@@ -447,8 +447,8 @@ mod tests {
             });
         }
 
-        let metalist = MetaList::new(&[]);
-        let mut rec = Record::new(0, 0, "", &metalist);
+        let metalink = MetaLink::new(&[]);
+        let mut rec = Record::new(0, 0, "", &metalink);
         rec.activate(format_args!("value"));
         run(&rec, b);
     }
@@ -459,8 +459,8 @@ mod tests {
 
         let mut buf = [0u8];
 
-        let metalist = MetaList::new(&[]);
-        let mut rec = Record::new(0, 0, "", &metalist);
+        let metalink = MetaLink::new(&[]);
+        let mut rec = Record::new(0, 0, "", &metalink);
         rec.activate(format_args!("value"));
         assert!(layout.format(&rec, &mut &mut buf[..]).is_err());
     }
@@ -477,8 +477,8 @@ mod tests {
             assert_eq!(format!("{}", rec.timestamp().format("%+")), from_utf8(&buf[..]).unwrap());
         }
 
-        let metalist = MetaList::new(&[]);
-        let mut rec = Record::new(0, 0, "", &metalist);
+        let metalink = MetaLink::new(&[]);
+        let mut rec = Record::new(0, 0, "", &metalink);
         rec.activate(format_args!(""));
         run(&rec);
     }
@@ -497,8 +497,8 @@ mod tests {
             });
         }
 
-        let metalist = MetaList::new(&[]);
-        let mut rec = Record::new(2, 0, "", &metalist);
+        let metalink = MetaLink::new(&[]);
+        let mut rec = Record::new(2, 0, "", &metalink);
         rec.activate(format_args!(""));
         run(&rec, b);
     }
@@ -518,8 +518,8 @@ mod tests {
         let meta = [
             Meta::new("flag", &val)
         ];
-        let metalist = MetaList::new(&meta);
-        let rec = Record::new(0, 0, "", &metalist);
+        let metalink = MetaLink::new(&meta);
+        let rec = Record::new(0, 0, "", &metalink);
         run(&rec);
     }
 
@@ -538,8 +538,8 @@ mod tests {
         let meta = [
             Meta::new("pi", &val)
         ];
-        let metalist = MetaList::new(&meta);
-        let rec = Record::new(0, 0, "", &metalist);
+        let metalink = MetaLink::new(&meta);
+        let rec = Record::new(0, 0, "", &metalink);
         run(&rec);
     }
 
@@ -549,8 +549,8 @@ mod tests {
 
         let val = false;
         let meta = [];
-        let metalist = MetaList::new(&meta);
-        let rec = Record::new(0, 0, "", &metalist);
+        let metalink = MetaLink::new(&meta);
+        let rec = Record::new(0, 0, "", &metalink);
 
         let mut buf = Vec::new();
         assert!(layout.format(&rec, &mut buf).is_err());
@@ -566,8 +566,8 @@ mod tests {
             Meta::new("num", &v1),
             Meta::new("name", &v2),
         ];
-        let metalist = MetaList::new(&meta);
-        let rec = Record::new(0, 0, "", &metalist);
+        let metalink = MetaLink::new(&meta);
+        let rec = Record::new(0, 0, "", &metalink);
 
         let mut buf = Vec::new();
         layout.format(&rec, &mut buf).unwrap();
@@ -580,8 +580,8 @@ mod tests {
         let layout = PatternLayout::new("{module}").unwrap();
 
         let mut buf = Vec::new();
-        let metalist = MetaList::new(&[]);
-        let mut rec = Record::new(0, 0, module_path!(), &metalist);
+        let metalink = MetaLink::new(&[]);
+        let mut rec = Record::new(0, 0, module_path!(), &metalink);
         layout.format(&rec, &mut buf).unwrap();
 
         assert_eq!("blacklog::layout::pattern::tests", from_utf8(&buf[..]).unwrap());
@@ -592,8 +592,8 @@ mod tests {
         let layout = PatternLayout::new("{module:/^14.12}").unwrap();
 
         let mut buf = Vec::new();
-        let metalist = MetaList::new(&[]);
-        let mut rec = Record::new(0, 0, module_path!(), &metalist);
+        let metalink = MetaLink::new(&[]);
+        let mut rec = Record::new(0, 0, module_path!(), &metalink);
         layout.format(&rec, &mut buf).unwrap();
 
         assert_eq!("/blacklog::la/", from_utf8(&buf[..]).unwrap());
@@ -604,8 +604,8 @@ mod tests {
         let layout = PatternLayout::new("{line}").unwrap();
 
         let mut buf = Vec::new();
-        let metalist = MetaList::new(&[]);
-        let mut rec = Record::new(0, 666, "", &metalist);
+        let metalink = MetaLink::new(&[]);
+        let mut rec = Record::new(0, 666, "", &metalink);
         layout.format(&rec, &mut buf).unwrap();
 
         assert_eq!("666", from_utf8(&buf[..]).unwrap());

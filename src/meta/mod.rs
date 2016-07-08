@@ -142,75 +142,6 @@ impl<'a> Iterator for MetaLinkIter<'a> {
     }
 }
 
-/// Linked list of meta information containers. Used to composite various meta containers.
-pub struct MetaList<'a> {
-    meta: &'a [Meta<'a>],
-    prev: Option<&'a MetaList<'a>>,
-}
-
-impl<'a> MetaList<'a> {
-    #[inline]
-    pub fn new(meta: &'a [Meta<'a>]) -> MetaList<'a> {
-        MetaList::next(meta, None)
-    }
-
-    pub fn next(meta: &'a [Meta<'a>], prev: Option<&'a MetaList<'a>>) -> MetaList<'a> {
-        MetaList {
-            meta: meta,
-            prev: prev,
-        }
-    }
-
-    pub fn meta(&self) -> &[Meta<'a>] {
-        self.meta
-    }
-
-    pub fn prev(&self) -> Option<&'a MetaList<'a>> {
-        self.prev
-    }
-
-    pub fn iter(&'a self) -> MetaListIter<'a> {
-        MetaListIter::new(self)
-    }
-}
-
-pub struct MetaListIter<'a> {
-    idx: usize,
-    cur: Option<&'a MetaList<'a>>,
-}
-
-impl<'a> MetaListIter<'a> {
-    fn new(metalist: &'a MetaList) -> MetaListIter<'a> {
-        MetaListIter {
-            idx: 0,
-            cur: Some(metalist),
-        }
-    }
-}
-
-impl<'a> Iterator for MetaListIter<'a> {
-    type Item = Meta<'a>;
-
-    fn next(&mut self) -> Option<Meta<'a>> {
-        self.cur.and_then(|metalist| {
-            match self.idx {
-                idx if idx + 1 == metalist.meta().len() => {
-                    let res = metalist.meta()[idx];
-                    self.idx = 0;
-                    self.cur = metalist.prev();
-                    Some(res)
-                }
-                idx if idx + 1 < metalist.meta().len() => {
-                    let res = metalist.meta()[idx];
-                    self.idx += 1;
-                    Some(res)
-                }
-                _ => None
-            }
-        })
-    }
-}
-
 /// Owning evil twin of Meta.
 pub struct MetaBuf {
     name: &'static str,
@@ -235,13 +166,14 @@ impl<'a> Into<Meta<'a>> for &'a MetaBuf {
     }
 }
 
-impl<'a> From<&'a MetaList<'a>> for Vec<MetaBuf> {
-    fn from(val: &'a MetaList<'a>) -> Vec<MetaBuf> {
+impl<'a> From<&'a MetaLink<'a>> for Vec<MetaBuf> {
+    fn from(val: &'a MetaLink<'a>) -> Vec<MetaBuf> {
         let mut result = Vec::with_capacity(32);
 
+        // TODO: iter + collect?
         let mut node = val;
         loop {
-            for meta in node.meta.iter() {
+            for meta in node.data.iter() {
                 result.push(MetaBuf::new(meta.name, meta.value.to_boxed_format()));
             }
 
@@ -267,37 +199,6 @@ mod tests {
         let meta = Meta::new("n#1", &val);
 
         assert_eq!("n#1", meta.name);
-    }
-
-    #[test]
-    fn metalist_iter() {
-        let val = "val";
-        let meta = &[
-            Meta::new("n#1", &val),
-            Meta::new("n#2", &val),
-            Meta::new("n#3", &val),
-            Meta::new("n#4", &val),
-        ];
-        let metalist = MetaList::new(meta);
-
-        assert_eq!(4, metalist.iter().count());
-    }
-
-    #[test]
-    fn metalist_iter_with_nested_lists() {
-        let val = 42;
-        let meta1 = &[Meta::new("n#1", &val), Meta::new("n#2", &val)];
-        let meta2 = &[Meta::new("n#3", &val), Meta::new("n#4", &val)];
-        let metalist1 = MetaList::new(meta1);
-        let metalist2 = MetaList::next(meta2, Some(&metalist1));
-
-        let mut iter = metalist2.iter();
-
-        assert_eq!("n#3", iter.next().unwrap().name);
-        assert_eq!("n#4", iter.next().unwrap().name);
-        assert_eq!("n#1", iter.next().unwrap().name);
-        assert_eq!("n#2", iter.next().unwrap().name);
-        assert!(iter.next().is_none());
     }
 
     #[test]

@@ -94,7 +94,7 @@ impl Factory for SyncLogger {
 macro_rules! log (
     ($log:ident, $sev:expr, $fmt:expr, [$($args:tt)*], {$($name:ident: $val:expr,)*}) => {{
         $log.log(&mut $crate::Record::new($sev, line!(), module_path!(),
-            &$crate::MetaList::new(&[
+            &$crate::MetaLink::new(&[
                 $($crate::Meta::new(stringify!($name), &$val)),*
             ])
         ), format_args!($fmt, $($args)*));
