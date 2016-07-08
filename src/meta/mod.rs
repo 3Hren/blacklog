@@ -51,6 +51,7 @@ pub struct MetaLink<'a> {
 }
 
 impl<'a> MetaLink<'a> {
+    /// Constructs a new link of meta linked list, that acts like a head of the entire list.
     pub fn new(data: &'a [Meta<'a>]) -> MetaLink<'a> {
         MetaLink {
             id: 0,
@@ -59,6 +60,7 @@ impl<'a> MetaLink<'a> {
         }
     }
 
+    /// Constructs a new link of meta linked list, that is appended to the given one.
     pub fn chained(data: &'a [Meta<'a>], prev: &'a MetaLink<'a>) -> MetaLink<'a> {
         MetaLink {
             id: 1 + prev.id,

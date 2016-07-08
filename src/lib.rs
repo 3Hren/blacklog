@@ -29,7 +29,7 @@ pub use self::filter::Filter;
 pub use self::handle::Handle;
 pub use self::layout::Layout;
 pub use self::logger::Logger;
-pub use self::meta::{FnMeta, Meta, MetaBuf, MetaList};
+pub use self::meta::{FnMeta, Meta, MetaBuf, MetaList, MetaLink};
 pub use self::meta::format::{Format, Formatter, IntoBoxedFormat};
 pub use self::output::Output;
 pub use self::record::{Record};
