@@ -98,7 +98,6 @@ impl<'a> Iterator for LinkIter<'a> {
             None
         } else {
             let nadvance = self.tail.id - self.id;
-            let mut id = 0;
             let mut curr = self.tail;
             for _ in 0..nadvance {
                 curr = curr.prev.expect("invalid link enumeration - logic error");
