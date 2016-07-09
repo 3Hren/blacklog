@@ -42,6 +42,15 @@ impl<'a> Debug for Meta<'a> {
 }
 
 /// Linked list of meta information containers, that are living on stack.
+///
+/// This structure represents a link of an intrusive backward linked list with elements on stack.
+/// Such exotic data structure was chosen primarily for performance reasons on construction to
+/// completely avoid heap allocations.
+///
+/// Unfortunately due to Rust borrow system it's impossible (at least I didn't find out how) to
+/// implement forward linked-list without unsafe code, that's why this list contains only reference
+/// to the previous link, which gives an O(N^2) complexity for forward traversal. On the other side
+/// usually there aren't so much links (likely 2-3), so this complexity shouldn't hurt much.
 #[derive(Debug)]
 pub struct MetaLink<'a> {
     /// Position in the linked list.
@@ -61,7 +70,7 @@ impl<'a> MetaLink<'a> {
     }
 
     /// Constructs a new link of meta linked list, that is appended to the given one.
-    pub fn chained(data: &'a [Meta<'a>], prev: &'a MetaLink<'a>) -> MetaLink<'a> {
+    pub fn with_head(data: &'a [Meta<'a>], prev: &'a MetaLink<'a>) -> MetaLink<'a> {
         MetaLink {
             id: 1 + prev.id,
             data: data,
@@ -215,9 +224,9 @@ mod tests {
         let meta1 = [];
         let metalink1 = MetaLink::new(&meta1);
         let meta2 = [];
-        let metalink2 = MetaLink::chained(&meta2, &metalink1);
+        let metalink2 = MetaLink::with_head(&meta2, &metalink1);
         let meta3 = [];
-        let metalink3 = MetaLink::chained(&meta3, &metalink2);
+        let metalink3 = MetaLink::with_head(&meta3, &metalink2);
 
         let mut iter = LinkIter::new(&metalink3);
 
@@ -267,14 +276,14 @@ mod tests {
             Meta::new("n#3", &val),
             Meta::new("n#4", &val),
         ];
-        let metalink2 = MetaLink::chained(&meta2, &metalink1);
+        let metalink2 = MetaLink::with_head(&meta2, &metalink1);
 
         let meta3 = [
             Meta::new("n#5", &val),
             Meta::new("n#6", &val),
             Meta::new("n#7", &val),
         ];
-        let metalink3 = MetaLink::chained(&meta3, &metalink2);
+        let metalink3 = MetaLink::with_head(&meta3, &metalink2);
 
         let mut iter = metalink3.iter();
 
@@ -298,14 +307,14 @@ mod tests {
         let metalink1 = MetaLink::new(&meta1);
 
         let meta2 = [];
-        let metalink2 = MetaLink::chained(&meta2, &metalink1);
+        let metalink2 = MetaLink::with_head(&meta2, &metalink1);
 
         let meta3 = [
             Meta::new("n#5", &val),
             Meta::new("n#6", &val),
             Meta::new("n#7", &val),
         ];
-        let metalink3 = MetaLink::chained(&meta3, &metalink2);
+        let metalink3 = MetaLink::with_head(&meta3, &metalink2);
 
         let mut iter = metalink3.iter();
 
@@ -327,14 +336,14 @@ mod tests {
             Meta::new("n#1", &val),
             Meta::new("n#2", &val),
         ];
-        let metalink2 = MetaLink::chained(&meta2, &metalink1);
+        let metalink2 = MetaLink::with_head(&meta2, &metalink1);
 
         let meta3 = [
             Meta::new("n#3", &val),
             Meta::new("n#4", &val),
             Meta::new("n#5", &val),
         ];
-        let metalink3 = MetaLink::chained(&meta3, &metalink2);
+        let metalink3 = MetaLink::with_head(&meta3, &metalink2);
 
         let mut iter = metalink3.iter();
 

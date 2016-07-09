@@ -189,7 +189,7 @@ mod tests {
         let meta1 = &[Meta::new("n#1", &v), Meta::new("n#2", &v)];
         let meta2 = &[Meta::new("n#3", &v), Meta::new("n#4", &v)];
         let metalink1 = MetaLink::new(meta1);
-        let metalink2 = MetaLink::chained(meta2, &metalink1);
+        let metalink2 = MetaLink::with_head(meta2, &metalink1);
 
         run(&Record::new(0, 0, "", &metalink2));
     }
