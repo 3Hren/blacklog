@@ -9,7 +9,7 @@ use meta::MetaLinkIter;
 
 /// Logging event context contains an information about where the event was created including the
 /// source code location and thread id.
-#[derive(Copy, Clone)]
+#[derive(Debug, Copy, Clone)]
 struct Context {
     /// The line number on which the logging event was created.
     line: u32,
@@ -34,7 +34,7 @@ struct Context {
 /// For performance reasons all records are created in inactive state, without timestamp and
 /// formatted message. It must be explicitly activated after filtering but before handling to make
 /// all things act in a proper way.
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct Record<'a> {
     // TODO: Maybe it's reasonable to keep this i32 + &'static Format to make severity formattable
     // without explicit function provisioning in layouts.
