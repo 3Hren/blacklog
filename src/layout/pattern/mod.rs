@@ -547,7 +547,6 @@ mod tests {
     fn fail_meta_not_found() {
         let layout = PatternLayout::new("{flag}").unwrap();
 
-        let val = false;
         let meta = [];
         let metalink = MetaLink::new(&meta);
         let rec = Record::new(0, 0, "", &metalink);
@@ -581,7 +580,7 @@ mod tests {
 
         let mut buf = Vec::new();
         let metalink = MetaLink::new(&[]);
-        let mut rec = Record::new(0, 0, module_path!(), &metalink);
+        let rec = Record::new(0, 0, module_path!(), &metalink);
         layout.format(&rec, &mut buf).unwrap();
 
         assert_eq!("blacklog::layout::pattern::tests", from_utf8(&buf[..]).unwrap());
@@ -593,7 +592,7 @@ mod tests {
 
         let mut buf = Vec::new();
         let metalink = MetaLink::new(&[]);
-        let mut rec = Record::new(0, 0, module_path!(), &metalink);
+        let rec = Record::new(0, 0, module_path!(), &metalink);
         layout.format(&rec, &mut buf).unwrap();
 
         assert_eq!("/blacklog::la/", from_utf8(&buf[..]).unwrap());
@@ -605,7 +604,7 @@ mod tests {
 
         let mut buf = Vec::new();
         let metalink = MetaLink::new(&[]);
-        let mut rec = Record::new(0, 666, "", &metalink);
+        let rec = Record::new(0, 666, "", &metalink);
         layout.format(&rec, &mut buf).unwrap();
 
         assert_eq!("666", from_utf8(&buf[..]).unwrap());
