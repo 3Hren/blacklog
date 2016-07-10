@@ -39,6 +39,8 @@
 - [ ] Integration with default log crate.
 - [ ] Builder pattern for each category.
 - [ ] Stable Rust support.
+  - [ ] Replace rust-peg with something compilable on stable.
+  - [ ] Maybe we don't need serde-json?
 
 - [ ] Implement owned timestamp generator instead of interpretation.
 - [ ] Make token generator for pattern layout to act like lightweight pattern.
