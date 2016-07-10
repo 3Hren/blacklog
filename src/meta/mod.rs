@@ -24,6 +24,7 @@ pub struct Meta<'a> {
 }
 
 impl<'a> Meta<'a> {
+    /// Constructs a new Meta struct with the given name and value.
     #[inline]
     pub fn new(name: &'static str, value: &'a FormatInto) -> Meta<'a> {
         Meta {
@@ -78,6 +79,32 @@ impl<'a> MetaLink<'a> {
         }
     }
 
+    /// Returns a front-to-back Meta iterator.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use blacklog::{Meta, MetaLink};
+    ///
+    /// let val = "le value";
+    /// let meta1 = [
+    ///     Meta::new("n#1", &val),
+    /// ];
+    /// let metalink1 = MetaLink::new(&meta1);
+    ///
+    /// let meta2 = [
+    ///     Meta::new("n#2", &val),
+    ///     Meta::new("n#3", &val),
+    /// ];
+    /// let metalink2 = MetaLink::with_head(&meta2, &metalink1);
+    ///
+    /// let mut iter = metalink2.iter();
+    ///
+    /// assert_eq!("n#1", iter.next().unwrap().name);
+    /// assert_eq!("n#2", iter.next().unwrap().name);
+    /// assert_eq!("n#3", iter.next().unwrap().name);
+    /// assert!(iter.next().is_none());
+    /// ```
     pub fn iter(&self) -> MetaLinkIter {
         MetaLinkIter::new(self)
     }
