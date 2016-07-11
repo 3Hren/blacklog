@@ -1,4 +1,5 @@
 use std::fmt::Arguments;
+use std::ops::Deref;
 use std::sync::{Arc, Mutex};
 
 use {Config, Registry};
@@ -13,6 +14,12 @@ use factory::Factory;
 pub trait Logger: Send + Sync {
     // TODO: Return a result, which can be ignored (without #[must_use]).
     fn log<'a, 'b>(&self, rec: &mut Record<'a>, args: Arguments<'b>);
+}
+
+impl<T: Logger + ?Sized> Logger for Box<T> {
+    fn log<'a, 'b>(&self, rec: &mut Record<'a>, args: Arguments<'b>) {
+        self.deref().log(rec, args)
+    }
 }
 
 /// A logger wrapper that wraps other logger and filters incoming events by fast severity check.
@@ -256,6 +263,18 @@ mod tests {
         assert_eq!(0, counter.load(Ordering::SeqCst));
         log!(log, 1, "");
         assert_eq!(1, counter.load(Ordering::SeqCst));
+    }
+
+    #[test]
+    fn log_filter_box() {
+        fn create_wrapper(log: Box<Logger>) -> Box<Logger> {
+            box FilteredLoggerWrapper::new(log) as Box<Logger>
+        }
+
+        let log = box SyncLogger::new(vec![]);
+        let log = create_wrapper(log);
+
+        log!(log, 0, "");
     }
 }
 
