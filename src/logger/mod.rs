@@ -66,8 +66,9 @@ impl<L: Logger> Logger for FilteredLoggerWrapper<L> {
 
 /// Blocking, but still fast, thread-safe reloadable synchronous logger.
 ///
-/// Represents a logger, which handles incoming records by sequentially iterating through given
+/// Represents a logger, which handles incoming records by sequentially iterating through the given
 /// handlers.
+///
 /// Such kind of logger is required to implement zero-copy meta information handling, through its
 /// borrowing without prior converting into owned structures. In these cases it's strongly
 /// recommended that all of handlers and outputs won't block no matter what. For example UDP output
