@@ -19,6 +19,11 @@ pub trait Logger: Send + Sync {
 struct SeverityFilteredLoggerWrapper {}
 
 // TODO: Docs.
+/// # Note
+///
+/// The logger filter acts like a function to make filtering things common, but this may be
+/// significant performance overhead for denied events, because to obtain a filter we mush lock a
+/// mutex and copy a shared pointer containing the filter.
 pub struct FilteredLoggerWrapper<L> {
     logger: L,
     filter: Arc<Mutex<Arc<Box<Filter>>>>,
@@ -51,14 +56,22 @@ impl<L: Logger> Logger for FilteredLoggerWrapper<L> {
     }
 }
 
-// TODO: Write briefing.
+/// Blocking, but still fast, thread-safe reloadable synchronous logger.
 ///
-/// # Note
+/// Represents a logger, which handles incoming records by sequentially iterating through given
+/// handlers.
+/// Such kind of logger is required to implement zero-copy meta information handling, through its
+/// borrowing without prior converting into owned structures. In these cases it's strongly
+/// recommended that all of handlers and outputs won't block no matter what. For example UDP output
+/// perfectly fits in this recommendation, but the File output - does not, which may results in
+/// threads freezing in the case hardware I/O problems.
 ///
-// TODO: Wording.
-/// The logger filter acts like a function to make filtering things common, but this may be
-/// significant performance overhead for denied events, because to obtain a filter we mush lock a
-/// mutex and copy a shared pointer containing the filter.
+/// This logger acts like a root logger - the base of other functionality like filtering, which can
+/// be provided by wrapping instances of this struct.
+///
+/// By reloading we mean that this logger can be safely reassigned in runtime, allowing both to
+/// change configuration and to correctly finish all outstanding operations, like flushing. This
+/// feature gives an ability to implement popular SIGHUP logging rotation.
 #[derive(Clone)]
 pub struct SyncLogger {
     handlers: Arc<Vec<Box<Handle>>>,
