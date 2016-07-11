@@ -28,7 +28,7 @@ mod thread;
 pub use self::filter::Filter;
 pub use self::handle::Handle;
 pub use self::layout::Layout;
-pub use self::logger::Logger;
+pub use self::logger::{Logger, SyncLogger};
 pub use self::meta::{FnMeta, Meta, MetaBuf, MetaLink};
 pub use self::meta::format::{Format, Formatter, IntoBoxedFormat};
 pub use self::output::Output;
