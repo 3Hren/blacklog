@@ -2,6 +2,7 @@ use std::fmt::Arguments;
 use std::borrow::Cow;
 
 use chrono::{DateTime, UTC};
+use chrono::naive::datetime::NaiveDateTime;
 
 use {MetaBuf, MetaLink};
 
@@ -83,9 +84,10 @@ impl<'a> Record<'a> {
         &self.message
     }
 
-    pub fn timestamp(&self) -> &DateTime<UTC> {
-        // TODO: Bettern to return by value then.
-        &self.timestamp.as_ref().unwrap()
+    pub fn timestamp(&self) -> DateTime<UTC> {
+        self.timestamp.unwrap_or_else(|| {
+            DateTime::from_utc(NaiveDateTime::from_timestamp(0, 0), UTC)
+        })
     }
 
     pub fn line(&self) -> u32 {
