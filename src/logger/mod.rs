@@ -15,33 +15,20 @@ pub trait Logger: Send + Sync {
     fn log<'a, 'b>(&self, rec: &mut Record<'a>, args: Arguments<'b>);
 }
 
-/// # Note
-///
-/// The logger filter acts like a function to make filtering things common, but this may be a
-/// a performance overhead for denied events, because to obtain a filter we mush lock a mutex and
-/// copy a shared pointer containing the filter.
-// TODO: Maybe make logging filtering as a wrapper? This may be useful for both sync and async
-//       logging because for the latter case it's a significant not to copy and clone entire record
-//       that will be denied anyway.
-//       Moreover some people aren't needed a common filtering at all, a simple atomic severity is
-//       enough.
-//       How then to implement an early accept?
-//          1. Through record flag - fairly easy, becasuse records are already mut, but conceptually
-//             it's bad, because it's impossible to disable logging at all.
-//          2. Through hook - bad - wrapped logger must be immutable.
-//          3. Through `log_nofilter()` method - bad - ugly.
-//          *. Forbid hierarchical filters, only linear.
-#[derive(Clone)]
-pub struct SyncLogger {
+/// A logger wrapper that wraps other logger and filters incoming events by fast severity check.
+struct SeverityFilteredLoggerWrapper {}
+
+// TODO: Docs.
+pub struct FilteredLoggerWrapper<L> {
+    logger: L,
     filter: Arc<Mutex<Arc<Box<Filter>>>>,
-    handlers: Arc<Vec<Box<Handle>>>,
 }
 
-impl SyncLogger {
-    fn new(handlers: Vec<Box<Handle>>) -> SyncLogger {
-        SyncLogger {
+impl<L: Logger> FilteredLoggerWrapper<L> {
+    pub fn new(logger: L) -> FilteredLoggerWrapper<L> {
+        FilteredLoggerWrapper {
+            logger: logger,
             filter: Arc::new(Mutex::new(Arc::new(box NullFilter))),
-            handlers: Arc::new(handlers),
         }
     }
 
@@ -51,19 +38,47 @@ impl SyncLogger {
     }
 }
 
-impl Logger for SyncLogger {
+impl<L: Logger> Logger for FilteredLoggerWrapper<L> {
     fn log<'a, 'b>(&self, rec: &mut Record<'a>, args: Arguments<'b>) {
         let filter = self.filter.lock().unwrap().clone();
 
         match filter.filter(&rec) {
             FilterAction::Deny => {}
             FilterAction::Accept | FilterAction::Neutral => {
-                rec.activate(args);
-
-                for handle in self.handlers.iter() {
-                    handle.handle(rec).unwrap();
-                }
+                self.logger.log(rec, args)
             }
+        }
+    }
+}
+
+// TODO: Write briefing.
+///
+/// # Note
+///
+// TODO: Wording.
+/// The logger filter acts like a function to make filtering things common, but this may be
+/// significant performance overhead for denied events, because to obtain a filter we mush lock a
+/// mutex and copy a shared pointer containing the filter.
+#[derive(Clone)]
+pub struct SyncLogger {
+    handlers: Arc<Vec<Box<Handle>>>,
+}
+
+impl SyncLogger {
+    fn new(handlers: Vec<Box<Handle>>) -> SyncLogger {
+        SyncLogger {
+            handlers: Arc::new(handlers),
+        }
+    }
+}
+
+impl Logger for SyncLogger {
+    fn log<'a, 'b>(&self, rec: &mut Record<'a>, args: Arguments<'b>) {
+        // TODO: Maybe check whether a record was activated before.
+        rec.activate(args);
+
+        for handle in self.handlers.iter() {
+            handle.handle(rec).unwrap();
         }
     }
 }
@@ -214,6 +229,7 @@ mod tests {
 
         let counter = Arc::new(AtomicUsize::new(0));
         let log = SyncLogger::new(vec![box MockHandle { counter: counter.clone() }]);
+        let log = FilteredLoggerWrapper::new(log);
 
         log.filter(box |rec: &Record| {
             if rec.severity() >= 1 {
