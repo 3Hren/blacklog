@@ -22,8 +22,9 @@ impl<T: Logger + ?Sized> Logger for Box<T> {
     }
 }
 
-/// A logger wrapper that wraps other logger and filters incoming events by fast severity check.
-struct SeverityFilteredLoggerWrapper {}
+// TODO: Implement.
+// A logger wrapper that wraps other logger and filters incoming events by fast severity check.
+// struct SeverityFilteredLoggerWrapper {}
 
 // TODO: Docs.
 /// # Note
@@ -44,7 +45,7 @@ impl<L: Logger> FilteredLoggerWrapper<L> {
         }
     }
 
-    /// Replaces current logger filter with the given one.
+    /// Replaces the current filter with the given one.
     pub fn filter(&self, filter: Box<Filter>) {
         *self.filter.lock().unwrap() = Arc::new(filter);
     }
