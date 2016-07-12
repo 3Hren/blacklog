@@ -85,8 +85,7 @@ impl<F: SevMap> Layout for PatternLayout<F> {
                     self.sevmap.map(rec, spec, SeverityType::String, wr)?
                 }
                 TokenBuf::Timestamp(None, ref pattern, Timezone::Utc) => {
-                    // TODO: Replace with write! macro. Measure.
-                    wr.write_all(format!("{}", rec.timestamp().format(&pattern)).as_bytes())?
+                    write!(wr, "{}", rec.timestamp().format(&pattern))?
                 }
                 TokenBuf::Timestamp(None, ref pattern, Timezone::Local) => {
                     write!(wr, "{}", rec.timestamp().with_timezone(&Local).format(&pattern))?
@@ -528,21 +527,18 @@ mod tests {
     #[cfg(feature="benchmark")]
     #[bench]
     fn bench_timestamp(b: &mut Bencher) {
-        fn run<'a>(rec: &Record<'a>, b: &mut Bencher) {
-            let layout = PatternLayout::new("{timestamp}").unwrap();
-
-            let mut buf = Vec::with_capacity(128);
-
-            b.iter(|| {
-                layout.format(&rec, &mut buf).unwrap();
-                buf.clear();
-            });
-        }
-
         let metalink = MetaLink::new(&[]);
         let mut rec = Record::new(2, 0, "", &metalink);
         rec.activate(format_args!(""));
-        run(&rec, b);
+
+        let layout = PatternLayout::new("{timestamp}").unwrap();
+
+        let mut buf = Vec::with_capacity(128);
+
+        b.iter(|| {
+            layout.format(&rec, &mut buf).unwrap();
+            buf.clear();
+        });
     }
 
     #[test]
