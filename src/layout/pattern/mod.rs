@@ -102,8 +102,11 @@ impl<F: SevMap> Layout for PatternLayout<F> {
                     total.format(&mut Formatter::new(wr, Default::default()))?
                 }
                 TokenBuf::TimestampNum(Some(spec)) => {
-                    // Format as seconds (or microseconds) elapsed from Unix epoch.
-                    unimplemented!();
+                    let datetime = rec.timestamp();
+                    let timestamp = datetime.timestamp();
+                    let total = timestamp * 1000000 + datetime.nanosecond() as i64 / 1000;
+
+                    total.format(&mut Formatter::new(wr, spec.into()))?
                 }
                 TokenBuf::Line(None) => {
                     rec.line().format(&mut Formatter::new(wr, Default::default()))?
@@ -544,6 +547,23 @@ mod tests {
         let timestamp = datetime.timestamp();
         let value = timestamp * 1000000 + datetime.nanosecond() as i64 / 1000;
         assert_eq!(format!("{}", value), from_utf8(&buf[..]).unwrap());
+    }
+
+    #[test]
+    fn timestamp_num_with_spec() {
+        let metalink = MetaLink::new(&[]);
+        let mut rec = Record::new(0, 0, "", &metalink);
+        rec.activate(format_args!(""));
+
+        let layout = PatternLayout::new("{timestamp:/^18d}").unwrap();
+
+        let mut buf = Vec::new();
+        layout.format(&rec, &mut buf).unwrap();
+
+        let datetime = rec.timestamp();
+        let timestamp = datetime.timestamp();
+        let value = timestamp * 1000000 + datetime.nanosecond() as i64 / 1000;
+        assert_eq!(format!("/{}/", value), from_utf8(&buf[..]).unwrap());
     }
 
     #[cfg(feature="benchmark")]
