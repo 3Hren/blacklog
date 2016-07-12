@@ -92,7 +92,8 @@ impl<F: SevMap> Layout for PatternLayout<F> {
                     write!(wr, "{}", rec.timestamp().with_timezone(&Local).format(&pattern))?
                 }
                 TokenBuf::Timestamp(Some(spec), ref pattern, timezone) => {
-                    unimplemented!();
+                    format!("{}", rec.timestamp().format(&pattern))
+                        .format(&mut Formatter::new(wr, spec.into()))?
                 }
                 TokenBuf::TimestampNum(None) => {
                     let datetime = rec.timestamp();
@@ -500,20 +501,17 @@ mod tests {
 
     #[test]
     fn timestamp() {
-        fn run<'a>(rec: &Record<'a>) {
-            // NOTE: By default %+ pattern is used.
-            let layout = PatternLayout::new("{timestamp}").unwrap();
-
-            let mut buf = Vec::new();
-            layout.format(rec, &mut buf).unwrap();
-
-            assert_eq!(format!("{}", rec.timestamp().format("%+")), from_utf8(&buf[..]).unwrap());
-        }
-
         let metalink = MetaLink::new(&[]);
         let mut rec = Record::new(0, 0, "", &metalink);
         rec.activate(format_args!(""));
-        run(&rec);
+
+        // NOTE: By default %+ pattern is used.
+        let layout = PatternLayout::new("{timestamp}").unwrap();
+
+        let mut buf = Vec::new();
+        layout.format(&rec, &mut buf).unwrap();
+
+        assert_eq!(format!("{}", rec.timestamp().format("%+")), from_utf8(&buf[..]).unwrap());
     }
 
     #[test]
@@ -547,6 +545,21 @@ mod tests {
         let timestamp = datetime.timestamp();
         let value = timestamp * 1000000 + datetime.nanosecond() as i64 / 1000;
         assert_eq!(format!("{}", value), from_utf8(&buf[..]).unwrap());
+    }
+
+    #[test]
+    fn timestamp_with_spec() {
+        let metalink = MetaLink::new(&[]);
+        let mut rec = Record::new(0, 0, "", &metalink);
+        rec.activate(format_args!(""));
+
+        // NOTE: By default %+ pattern is used.
+        let layout = PatternLayout::new("{timestamp:/^6.4s}").unwrap();
+
+        let mut buf = Vec::new();
+        layout.format(&rec, &mut buf).unwrap();
+
+        assert_eq!(format!("/{}/", rec.timestamp().format("%Y")), from_utf8(&buf[..]).unwrap());
     }
 
     #[test]

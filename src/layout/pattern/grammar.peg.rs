@@ -60,12 +60,12 @@ format -> Token<'input>
     / "{" "timestamp:" pattern:strftime? tz:tz "}" {
         Token::Timestamp(None, pattern.unwrap_or("%+".into()), tz)
     }
-    / "{" "timestamp:" pattern:strftime? fill:fill? align:align? width:width? tz:tz "}" {
+    / "{" "timestamp:" pattern:strftime? fill:fill? align:align? width:width? precision:precision? tz:tz "}" {
         let spec = FormatSpec {
             fill: fill.unwrap_or(' '),
             align: align.unwrap_or(Alignment::AlignLeft),
             flags: 0,
-            precision: None,
+            precision: precision,
             width: width.unwrap_or(0),
         };
 
