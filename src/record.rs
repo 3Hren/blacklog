@@ -41,6 +41,7 @@ pub struct Record<'a> {
     // TODO: Maybe it's reasonable to keep this i32 + &'static Format to make severity formattable
     // without explicit function provisioning in layouts.
     sev: i32,
+    // TODO: Not sure about naming.
     sevfn: fn(i32, &mut Formatter) -> Result<(), ::std::io::Error>,
     message: Cow<'static, str>,
     timestamp: Option<DateTime<UTC>>,
@@ -86,6 +87,11 @@ impl<'a> Record<'a> {
     /// Returns a severity number as `i32` that was set during this record creation.
     pub fn severity(&self) -> i32 {
         self.sev
+    }
+
+    // TODO: Not sure about naming.
+    pub fn severity_format(&self) -> fn(i32, &mut Formatter) -> Result<(), ::std::io::Error> {
+        self.sevfn
     }
 
     pub fn message(&self) -> &str {
