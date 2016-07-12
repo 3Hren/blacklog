@@ -1,7 +1,9 @@
 use std::error;
 use std::io::Write;
 
-use {Format, Formatter, Record, Registry, Severity};
+use chrono::offset::local::Local;
+
+use {Format, Formatter, Record, Registry};
 use factory::Factory;
 use registry::Config;
 
@@ -87,7 +89,7 @@ impl<F: SevMap> Layout for PatternLayout<F> {
                     wr.write_all(format!("{}", rec.timestamp().format(&pattern)).as_bytes())?
                 }
                 TokenBuf::Timestamp(None, ref pattern, Timezone::Local) => {
-                    unimplemented!();
+                    write!(wr, "{}", rec.timestamp().with_timezone(&Local).format(&pattern))?
                 }
                 TokenBuf::Timestamp(Some(spec), ref pattern, timezone) => {
                     unimplemented!();
@@ -172,10 +174,12 @@ mod tests {
     use std::io::Write;
     use std::str::from_utf8;
 
+    use chrono::offset::local::Local;
+
     #[cfg(feature="benchmark")]
     use test::Bencher;
 
-    use {Meta, MetaLink, Record, Severity};
+    use {Meta, MetaLink, Record};
     use layout::Layout;
     use layout::pattern::{PatternLayout, SevMap};
     use layout::pattern::grammar::{FormatSpec, SeverityType};
@@ -503,6 +507,22 @@ mod tests {
         let mut rec = Record::new(0, 0, "", &metalink);
         rec.activate(format_args!(""));
         run(&rec);
+    }
+
+    #[test]
+    fn timestamp_local() {
+        let metalink = MetaLink::new(&[]);
+        let mut rec = Record::new(0, 0, "", &metalink);
+        rec.activate(format_args!(""));
+
+        // NOTE: By default %+ pattern is used.
+        let layout = PatternLayout::new("{timestamp:l}").unwrap();
+
+        let mut buf = Vec::new();
+        layout.format(&rec, &mut buf).unwrap();
+
+        assert_eq!(format!("{}", rec.timestamp().with_timezone(&Local).format("%+")),
+            from_utf8(&buf[..]).unwrap());
     }
 
     #[cfg(feature="benchmark")]
