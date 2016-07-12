@@ -14,7 +14,7 @@ extern crate serde_json;
 #[macro_use] extern crate quick_error;
 
 mod factory;
-mod filter;
+pub mod filter;
 mod handle;
 mod layout;
 mod logger;

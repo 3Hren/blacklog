@@ -12,17 +12,17 @@ mod grammar;
 use self::grammar::{parse, FormatSpec, ParseError, SeverityType, Timezone, TokenBuf};
 
 pub trait SevMap: Send + Sync {
-    fn map(&self, severity: Severity, spec: FormatSpec, ty: SeverityType, wr: &mut Write) ->
+    fn map(&self, sev: i32, spec: FormatSpec, ty: SeverityType, wr: &mut Write) ->
         Result<(), ::std::io::Error>;
 }
 
 pub struct DefaultSevMap;
 
 impl SevMap for DefaultSevMap {
-    fn map(&self, severity: Severity, spec: FormatSpec, ty: SeverityType, wr: &mut Write) ->
+    fn map(&self, sev: i32, spec: FormatSpec, ty: SeverityType, wr: &mut Write) ->
         Result<(), ::std::io::Error>
     {
-        severity.format(&mut Formatter::new(wr, spec.into()))
+        sev.format(&mut Formatter::new(wr, spec.into()))
     }
 }
 
@@ -78,7 +78,17 @@ impl<F: SevMap> Layout for PatternLayout<F> {
                     // TODO: Replace with write! macro. Measure.
                     wr.write_all(format!("{}", rec.timestamp().format(&pattern)).as_bytes())?
                 }
+                TokenBuf::Timestamp(None, ref pattern, Timezone::Local) => {
+                    unimplemented!();
+                }
+                TokenBuf::Timestamp(Some(spec), ref pattern, timezone) => {
+                    unimplemented!();
+                }
                 TokenBuf::TimestampNum(None) => {
+                    // Format as seconds (or microseconds) elapsed from Unix epoch.
+                    unimplemented!();
+                }
+                TokenBuf::TimestampNum(Some(spec)) => {
                     // Format as seconds (or microseconds) elapsed from Unix epoch.
                     unimplemented!();
                 }
@@ -121,7 +131,9 @@ impl<F: SevMap> Layout for PatternLayout<F> {
                         meta.value.format(&mut Formatter::new(wr, Default::default()))?;
                     }
                 }
-                _ => unimplemented!(),
+                TokenBuf::MetaList(Some(spec)) => {
+                    unimplemented!();
+                }
             }
         }
 
@@ -340,10 +352,10 @@ mod tests {
         struct Mapping;
 
         impl SevMap for Mapping {
-            fn map(&self, severity: Severity, spec: FormatSpec, ty: SeverityType, wr: &mut Write) ->
+            fn map(&self, sev: i32, spec: FormatSpec, ty: SeverityType, wr: &mut Write) ->
                 Result<(), ::std::io::Error>
             {
-                assert_eq!(2, severity);
+                assert_eq!(2, sev);
                 assert_eq!(' ', spec.fill);
                 assert_eq!(Alignment::AlignUnknown, spec.align);
                 assert_eq!(0, spec.width);
@@ -367,10 +379,10 @@ mod tests {
         struct Mapping;
 
         impl SevMap for Mapping {
-            fn map(&self, severity: Severity, spec: FormatSpec, ty: SeverityType, wr: &mut Write) ->
+            fn map(&self, sev: i32, spec: FormatSpec, ty: SeverityType, wr: &mut Write) ->
                 Result<(), ::std::io::Error>
             {
-                assert_eq!(2, severity);
+                assert_eq!(2, sev);
                 assert_eq!(' ', spec.fill);
                 assert_eq!(Alignment::AlignLeft, spec.align);
                 assert_eq!(0, spec.width);

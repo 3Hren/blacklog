@@ -7,6 +7,8 @@ use chrono::naive::datetime::NaiveDateTime;
 use {MetaBuf, MetaLink};
 
 use meta::MetaLinkIter;
+use meta::format::Formatter;
+use severity::Severity;
 
 /// Logging event context contains an information about where the event was created including the
 /// source code location and thread id.
@@ -35,20 +37,24 @@ struct Context {
 /// For performance reasons all records are created in inactive state, without timestamp and
 /// formatted message. It must be explicitly activated after filtering but before handling to make
 /// all things act in a proper way.
-#[derive(Debug, Clone)]
 pub struct Record<'a> {
     // TODO: Maybe it's reasonable to keep this i32 + &'static Format to make severity formattable
     // without explicit function provisioning in layouts.
     sev: i32,
+    sevfn: fn(i32, &mut Formatter) -> Result<(), ::std::io::Error>,
     message: Cow<'static, str>,
     timestamp: Option<DateTime<UTC>>,
     context: Context,
     metalink: &'a MetaLink<'a>, // TODO: Naming?
 }
 
+fn sevfn<T: Severity>(sev: i32, format: &mut Formatter) -> Result<(), ::std::io::Error> {
+    T::format(sev, format)
+}
+
 impl<'a> Record<'a> {
     pub fn new<T>(sev: T, line: u32, module: &'static str, metalink: &'a MetaLink<'a>) -> Record<'a>
-        where i32: From<T>
+        where T: Severity + 'static
     {
         let context = Context {
             line: line,
@@ -57,7 +63,8 @@ impl<'a> Record<'a> {
         };
 
         Record {
-            sev: From::from(sev),
+            sev: sev.num(),
+            sevfn: sevfn::<T>,
             message: Cow::Borrowed(""),
             timestamp: None,
             context: context,
@@ -68,6 +75,7 @@ impl<'a> Record<'a> {
     fn from_owned(rec: &'a RecordBuf, metalink: &'a MetaLink<'a>) -> Record<'a> {
         Record {
             sev: rec.sev,
+            sevfn: rec.sevfn,
             message: rec.message.clone(),
             timestamp: Some(rec.timestamp),
             context: rec.context,
@@ -112,6 +120,7 @@ impl<'a> Record<'a> {
     }
 
     pub fn activate<'b>(&mut self, format: Arguments<'b>) {
+        // TODO: Performance!
         self.message = Cow::Owned(format!("{}", format));
         self.timestamp = Some(UTC::now());
     }
@@ -122,6 +131,7 @@ impl<'a> Record<'a> {
 pub struct RecordBuf {
     timestamp: DateTime<UTC>,
     sev: i32,
+    sevfn: fn(i32, &mut Formatter) -> Result<(), ::std::io::Error>,
     context: Context,
     message: Cow<'static, str>,
     /// Ordered from recently added.
@@ -133,6 +143,7 @@ impl<'a> From<Record<'a>> for RecordBuf {
         RecordBuf {
             timestamp: val.timestamp.unwrap(),
             sev: val.sev,
+            sevfn: val.sevfn,
             context: val.context,
             message: val.message,
             meta: From::from(val.metalink),
@@ -145,6 +156,7 @@ impl<'a> From<&'a Record<'a>> for RecordBuf {
         RecordBuf {
             timestamp: val.timestamp.unwrap(),
             sev: val.sev,
+            sevfn: val.sevfn,
             context: val.context,
             message: val.message.clone(),
             meta: From::from(val.metalink),
