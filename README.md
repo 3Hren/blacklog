@@ -1,15 +1,14 @@
 # Planning for 0.2.0
-- [ ] Fully featured pattern layout.
-  - [x] Proof of concept.
-  - [x] Metalist placeholder.
-  - [x] Precision for floats.
-  - [x] +/#/0 flags.
-  - [x] Precision for meta.
-  - [x] Hex, Bin, Debug, etc. types for meta placeholders.
-  - [ ] Optional meta.
-  - [ ] Module, line, thread placeholders.
 - [ ] Layouts.
   - [ ] Pattern.
+    - [x] Proof of concept.
+    - [x] Metalist placeholder.
+    - [x] Precision for floats.
+    - [x] +/#/0 flags.
+    - [x] Precision for meta.
+    - [x] Hex, Bin, Debug, etc. types for meta placeholders.
+    - [ ] Optional meta.
+    - [ ] Module, line, thread placeholders.
   - [ ] JSON.
 - [ ] Outputs
   - [ ] Null.

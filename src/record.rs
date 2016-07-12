@@ -98,6 +98,7 @@ impl<'a> Record<'a> {
         &self.message
     }
 
+    // TODO: Rename to datetime().
     pub fn timestamp(&self) -> DateTime<UTC> {
         self.timestamp.unwrap_or_else(|| {
             DateTime::from_utc(NaiveDateTime::from_timestamp(0, 0), UTC)
