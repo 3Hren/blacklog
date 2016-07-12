@@ -104,8 +104,8 @@ impl<F: SevMap> Layout for PatternLayout<F> {
                 TokenBuf::Line(None) => {
                     rec.line().format(&mut Formatter::new(wr, Default::default()))?
                 }
-                TokenBuf::Line(Some(_spec)) => {
-                    unimplemented!();
+                TokenBuf::Line(Some(spec)) => {
+                    rec.line().format(&mut Formatter::new(wr, spec.into()))?
                 }
                 TokenBuf::Module(None) => {
                     wr.write_all(rec.module().as_bytes())?
@@ -646,5 +646,17 @@ mod tests {
         layout.format(&rec, &mut buf).unwrap();
 
         assert_eq!("666", from_utf8(&buf[..]).unwrap());
+    }
+
+    #[test]
+    fn line_with_spec() {
+        let layout = PatternLayout::new("{line:/^5}").unwrap();
+
+        let mut buf = Vec::new();
+        let metalink = MetaLink::new(&[]);
+        let rec = Record::new(0, 555, "", &metalink);
+        layout.format(&rec, &mut buf).unwrap();
+
+        assert_eq!("/555/", from_utf8(&buf[..]).unwrap());
     }
 }
