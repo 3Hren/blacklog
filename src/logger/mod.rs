@@ -316,6 +316,7 @@ mod bench {
     #[bench]
     fn log_message_with_format_and_meta6_reject(b: &mut Bencher) {
         let log = SyncLogger::new(vec![]);
+        let log = FilteredLoggerWrapper::new(log);
         log.filter(box |_rec: &Record| {
             FilterAction::Deny
         });
