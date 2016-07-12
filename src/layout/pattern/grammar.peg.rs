@@ -33,12 +33,12 @@ format -> Token<'input>
     / "{" "severity" "}"   { Token::Severity(None, SeverityType::String) }
     / "{" "severity:" "s}" { Token::Severity(None, SeverityType::String) }
     / "{" "severity:" "d}" { Token::Severity(None, SeverityType::Num) }
-    / "{" "severity:" fill:fill? align:align? width:width? ty:sevty? "}" {
+    / "{" "severity:" fill:fill? align:align? width:width? precision:precision? ty:sevty? "}" {
         let spec = FormatSpec {
             fill: fill.unwrap_or(' '),
             align: align.unwrap_or(Alignment::AlignLeft),
             flags: 0,
-            precision: None,
+            precision: precision,
             width: width.unwrap_or(0),
         };
 

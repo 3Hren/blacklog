@@ -245,6 +245,20 @@ mod tests {
     }
 
     #[test]
+    fn severity_with_precision() {
+        let tokens = parse("{severity:.1}").unwrap();
+
+        let spec = FormatSpec {
+            fill: ' ',
+            align: Alignment::AlignLeft,
+            flags: 0,
+            precision: Some(1),
+            width: 0,
+        };
+        assert_eq!(vec![Token::Severity(Some(spec), SeverityType::String)], tokens);
+    }
+
+    #[test]
     fn timestamp() {
         let tokens = parse("{timestamp}").unwrap();
 
