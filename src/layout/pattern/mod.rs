@@ -92,7 +92,12 @@ impl<F: SevMap> Layout for PatternLayout<F> {
                     write!(wr, "{}", rec.timestamp().with_timezone(&Local).format(&pattern))?
                 }
                 TokenBuf::Timestamp(Some(spec), ref pattern, timezone) => {
-                    format!("{}", rec.timestamp().format(&pattern))
+                    let tokens = match timezone {
+                        Timezone::Utc => rec.timestamp().format(&pattern),
+                        Timezone::Local => rec.timestamp().with_timezone(&Local).format(&pattern),
+                    };
+
+                    format!("{}", tokens)
                         .format(&mut Formatter::new(wr, spec.into()))?
                 }
                 TokenBuf::TimestampNum(None) => {
@@ -148,7 +153,7 @@ impl<F: SevMap> Layout for PatternLayout<F> {
                         meta.value.format(&mut Formatter::new(wr, Default::default()))?;
                     }
                 }
-                TokenBuf::MetaList(Some(spec)) => {
+                TokenBuf::MetaList(Some(_spec)) => {
                     unimplemented!();
                 }
             }
@@ -560,6 +565,21 @@ mod tests {
         layout.format(&rec, &mut buf).unwrap();
 
         assert_eq!(format!("/{}/", rec.timestamp().format("%Y")), from_utf8(&buf[..]).unwrap());
+    }
+
+    #[test]
+    fn timestamp_local_with_spec() {
+        let metalink = MetaLink::new(&[]);
+        let mut rec = Record::new(0, 0, "", &metalink);
+        rec.activate(format_args!(""));
+
+        let layout = PatternLayout::new("{timestamp:{%H:%M}/^4.2l}").unwrap();
+
+        let mut buf = Vec::new();
+        layout.format(&rec, &mut buf).unwrap();
+
+        assert_eq!(format!("/{}/", rec.timestamp().with_timezone(&Local).format("%H")),
+            from_utf8(&buf[..]).unwrap());
     }
 
     #[test]
