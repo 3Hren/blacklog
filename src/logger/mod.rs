@@ -87,7 +87,7 @@ pub struct SyncLogger {
 }
 
 impl SyncLogger {
-    fn new(handlers: Vec<Box<Handle>>) -> SyncLogger {
+    pub fn new(handlers: Vec<Box<Handle>>) -> SyncLogger {
         SyncLogger {
             handlers: Arc::new(handlers),
         }
@@ -127,6 +127,7 @@ impl Factory for SyncLogger {
     }
 }
 
+// TODO: Docs.
 #[macro_export]
 macro_rules! log (
     ($log:ident, $sev:expr, $fmt:expr, [$($args:tt)*], {$($name:ident: $val:expr,)*}) => {{
@@ -158,13 +159,6 @@ mod tests {
     use {Handle, FnMeta, Record};
     use filter::FilterAction;
     use super::*;
-
-    #[test]
-    fn log_only_message() {
-        let log = SyncLogger::new(vec![]);
-
-        log!(log, 0, "file does not exist: /var/www/favicon.ico");
-    }
 
     #[test]
     fn log_calls_handle() {
@@ -242,7 +236,7 @@ mod tests {
         }
 
         impl Handle for MockHandle {
-            fn handle(&self, rec: &mut Record) -> Result<(), ::std::io::Error> {
+            fn handle(&self, _rec: &mut Record) -> Result<(), ::std::io::Error> {
                 self.counter.fetch_add(1, Ordering::SeqCst);
 
                 Ok(())
