@@ -11,8 +11,10 @@ use record::Record;
 use factory::Factory;
 
 pub use self::actor::ActorLogger;
+// pub use self::sync::SyncLogger;
 
 mod actor;
+mod sync;
 
 /// Loggers are, well, responsible for logging. Nuff said.
 pub trait Logger: Send {
@@ -168,29 +170,6 @@ mod tests {
     use {Handle, FnMeta, Record};
     use filter::FilterAction;
     use super::*;
-
-    #[test]
-    fn log_calls_handle() {
-        struct MockHandle {
-            counter: Arc<AtomicUsize>,
-        }
-
-        impl Handle for MockHandle {
-            fn handle(&self, rec: &mut Record) -> Result<(), ::std::io::Error> {
-                assert_eq!(0, rec.severity());
-                self.counter.fetch_add(1, Ordering::SeqCst);
-
-                Ok(())
-            }
-        }
-
-        let counter = Arc::new(AtomicUsize::new(0));
-        let log = SyncLogger::new(vec![box MockHandle { counter: counter.clone() }]);
-
-        log!(log, 0, "file does not exist: /var/www/favicon.ico");
-
-        assert_eq!(1, counter.load(Ordering::SeqCst));
-    }
 
     #[test]
     fn log_macro_use() {
