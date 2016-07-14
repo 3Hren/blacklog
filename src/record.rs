@@ -38,8 +38,6 @@ struct Context {
 /// formatted message. It must be explicitly activated after filtering but before handling to make
 /// all things act in a proper way.
 pub struct Record<'a> {
-    // TODO: Maybe it's reasonable to keep this i32 + &'static Format to make severity formattable
-    // without explicit function provisioning in layouts.
     sev: i32,
     // TODO: Not sure about naming.
     sevfn: fn(i32, &mut Formatter) -> Result<(), ::std::io::Error>,
@@ -98,8 +96,7 @@ impl<'a> Record<'a> {
         &self.message
     }
 
-    // TODO: Rename to datetime().
-    pub fn timestamp(&self) -> DateTime<UTC> {
+    pub fn datetime(&self) -> DateTime<UTC> {
         self.timestamp.unwrap_or_else(|| {
             DateTime::from_utc(NaiveDateTime::from_timestamp(0, 0), UTC)
         })
@@ -143,19 +140,6 @@ pub struct RecordBuf {
     message: Cow<'static, str>,
     /// Ordered from recently added.
     meta: Vec<MetaBuf>,
-}
-
-impl<'a> From<Record<'a>> for RecordBuf {
-    fn from(val: Record<'a>) -> RecordBuf {
-        RecordBuf {
-            timestamp: val.timestamp.unwrap(),
-            sev: val.sev,
-            sevfn: val.sevfn,
-            context: val.context,
-            message: val.message,
-            meta: From::from(val.metalink),
-        }
-    }
 }
 
 impl<'a> From<&'a Record<'a>> for RecordBuf {
@@ -225,7 +209,7 @@ mod tests {
 
             assert_eq!(1, borrow.severity());
             assert_eq!("message", borrow.message());
-            assert_eq!(rec.timestamp(), borrow.timestamp());
+            assert_eq!(rec.datetime(), borrow.datetime());
             assert_eq!(2, borrow.line());
             assert_eq!("mod", borrow.module());
             assert_eq!(rec.thread(), borrow.thread());

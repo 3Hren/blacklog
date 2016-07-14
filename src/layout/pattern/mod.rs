@@ -86,29 +86,29 @@ impl<F: SevMap> Layout for PatternLayout<F> {
                     self.sevmap.map(rec, spec, SeverityType::String, wr)?
                 }
                 TokenBuf::Timestamp(None, ref pattern, Timezone::Utc) => {
-                    write!(wr, "{}", rec.timestamp().format(&pattern))?
+                    write!(wr, "{}", rec.datetime().format(&pattern))?
                 }
                 TokenBuf::Timestamp(None, ref pattern, Timezone::Local) => {
-                    write!(wr, "{}", rec.timestamp().with_timezone(&Local).format(&pattern))?
+                    write!(wr, "{}", rec.datetime().with_timezone(&Local).format(&pattern))?
                 }
                 TokenBuf::Timestamp(Some(spec), ref pattern, timezone) => {
                     let tokens = match timezone {
-                        Timezone::Utc => rec.timestamp().format(&pattern),
-                        Timezone::Local => rec.timestamp().with_timezone(&Local).format(&pattern),
+                        Timezone::Utc => rec.datetime().format(&pattern),
+                        Timezone::Local => rec.datetime().with_timezone(&Local).format(&pattern),
                     };
 
                     format!("{}", tokens)
                         .format(&mut Formatter::new(wr, spec.into()))?
                 }
                 TokenBuf::TimestampNum(None) => {
-                    let datetime = rec.timestamp();
+                    let datetime = rec.datetime();
                     let timestamp = datetime.timestamp();
                     let total = timestamp * 1000000 + datetime.nanosecond() as i64 / 1000;
 
                     total.format(&mut Formatter::new(wr, Default::default()))?
                 }
                 TokenBuf::TimestampNum(Some(spec)) => {
-                    let datetime = rec.timestamp();
+                    let datetime = rec.datetime();
                     let timestamp = datetime.timestamp();
                     let total = timestamp * 1000000 + datetime.nanosecond() as i64 / 1000;
 
@@ -516,7 +516,7 @@ mod tests {
         let mut buf = Vec::new();
         layout.format(&rec, &mut buf).unwrap();
 
-        assert_eq!(format!("{}", rec.timestamp().format("%+")), from_utf8(&buf[..]).unwrap());
+        assert_eq!(format!("{}", rec.datetime().format("%+")), from_utf8(&buf[..]).unwrap());
     }
 
     #[test]
@@ -531,7 +531,7 @@ mod tests {
         let mut buf = Vec::new();
         layout.format(&rec, &mut buf).unwrap();
 
-        assert_eq!(format!("{}", rec.timestamp().with_timezone(&Local).format("%+")),
+        assert_eq!(format!("{}", rec.datetime().with_timezone(&Local).format("%+")),
             from_utf8(&buf[..]).unwrap());
     }
 
@@ -546,7 +546,7 @@ mod tests {
         let mut buf = Vec::new();
         layout.format(&rec, &mut buf).unwrap();
 
-        let datetime = rec.timestamp();
+        let datetime = rec.datetime();
         let timestamp = datetime.timestamp();
         let value = timestamp * 1000000 + datetime.nanosecond() as i64 / 1000;
         assert_eq!(format!("{}", value), from_utf8(&buf[..]).unwrap());
@@ -564,7 +564,7 @@ mod tests {
         let mut buf = Vec::new();
         layout.format(&rec, &mut buf).unwrap();
 
-        assert_eq!(format!("/{}/", rec.timestamp().format("%Y")), from_utf8(&buf[..]).unwrap());
+        assert_eq!(format!("/{}/", rec.datetime().format("%Y")), from_utf8(&buf[..]).unwrap());
     }
 
     #[test]
@@ -578,7 +578,7 @@ mod tests {
         let mut buf = Vec::new();
         layout.format(&rec, &mut buf).unwrap();
 
-        assert_eq!(format!("/{}/", rec.timestamp().with_timezone(&Local).format("%H")),
+        assert_eq!(format!("/{}/", rec.datetime().with_timezone(&Local).format("%H")),
             from_utf8(&buf[..]).unwrap());
     }
 
@@ -593,7 +593,7 @@ mod tests {
         let mut buf = Vec::new();
         layout.format(&rec, &mut buf).unwrap();
 
-        let datetime = rec.timestamp();
+        let datetime = rec.datetime();
         let timestamp = datetime.timestamp();
         let value = timestamp * 1000000 + datetime.nanosecond() as i64 / 1000;
         assert_eq!(format!("/{}/", value), from_utf8(&buf[..]).unwrap());

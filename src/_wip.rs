@@ -15,33 +15,6 @@ use meta::format::FormatInto;
 
 type Error = ::std::io::Error;
 
-#[derive(Clone)]
-struct SyncLogger {
-    handlers: Arc<Vec<Box<Handler>>>,
-    severity: Arc<AtomicI32>,
-    filter: Arc<Mutex<Arc<Box<Filter>>>>,
-}
-
-impl SyncLogger {
-    fn new(handlers: Vec<Box<Handler>>) -> SyncLogger {
-        SyncLogger {
-            handlers: Arc::new(handlers),
-            severity: Arc::new(AtomicI32::new(0)),
-            filter: Arc::new(Mutex::new(Arc::new(box NullFilter))),
-        }
-    }
-
-    fn severity(&self, val: Severity) {
-        self.severity.store(val, Ordering::Release);
-    }
-
-    fn filter<F>(&self, filter: F)
-        where F: Filter + 'static
-    {
-        (*self.filter.lock().unwrap()) = Arc::new(box filter);
-    }
-}
-
 trait Mutant : Send + Sync {
     fn mutate(&self, rec: &mut Record, f: &Fn(&mut Record));
 }
