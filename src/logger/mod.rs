@@ -10,8 +10,12 @@ use record::Record;
 
 use factory::Factory;
 
+pub use self::actor::ActorLogger;
+
+mod actor;
+
 /// Loggers are, well, responsible for logging. Nuff said.
-pub trait Logger: Send + Sync {
+pub trait Logger: Send {
     // TODO: Return a result, which can be ignored (without #[must_use]).
     fn log<'a, 'b>(&self, rec: &mut Record<'a>, args: Arguments<'b>);
 }
