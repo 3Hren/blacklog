@@ -65,3 +65,13 @@
 - [ ] Default Log Crate integration (example).
 - [ ] Rate filter (example and use-case).
 - [ ] Filters aware (example how to implement hierarchical logger).
+
+# Tutorial
+- [ ] Hello - just init sync logger with pretty terminal output and log some (with log crate levels).
+- [ ] Logger with custom severity.
+- [ ] From file (with log crate levels).
+- [ ] Manual logger creation.
+- [ ] Adaptors - fast severity filter.
+- [ ] Adaptors - custom filter.
+- [ ] Adaptors - async.
+- [ ] Integration with `log` crate.
