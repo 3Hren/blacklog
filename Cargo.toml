@@ -21,6 +21,8 @@ quick-error = "1.1"
 chrono = "0.2"
 # Configuration from generic source.
 serde_json = "0.7"
+# Integration with the Standard Logging Library.
+log = "0.3"
 
 [target.'cfg(unix)'.dependencies]
 libc = "0.2"

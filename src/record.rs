@@ -62,7 +62,7 @@ impl<'a> Record<'a> {
         };
 
         Record {
-            sev: sev.num(),
+            sev: sev.as_i32(),
             sevfn: sevfn::<T>,
             message: Cow::Borrowed(""),
             timestamp: None,

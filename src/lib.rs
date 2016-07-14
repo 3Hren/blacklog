@@ -12,10 +12,11 @@
 extern crate chrono;
 extern crate serde_json;
 #[macro_use] extern crate quick_error;
+extern crate log;
 
 mod factory;
 pub mod filter;
-mod handle;
+pub mod handle;
 mod layout;
 pub mod logger;
 mod meta;

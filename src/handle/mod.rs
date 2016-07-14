@@ -1,7 +1,9 @@
 use Record;
 
+mod dev;
 mod sync;
 
+pub use self::dev::Dev;
 pub use self::sync::SyncHandle;
 
 /// Combines a filter, layout and outputs together.
