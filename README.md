@@ -26,7 +26,7 @@
   - [ ] Composite.
 - [ ] Loggers.
   - [ ] Sync.
-    - [ ] Reset at runtime.
+    - [x] Reset at runtime.    
   - [ ] Async logger.
     - [x] Proof of concept.
     - [ ] Finish.
@@ -75,3 +75,4 @@
 - [ ] Adaptors - custom filter.
 - [ ] Adaptors - async.
 - [ ] Integration with `log` crate.
+- [ ] Runtime logging reset (with SIGHUP).

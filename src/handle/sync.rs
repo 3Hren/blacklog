@@ -27,7 +27,7 @@ impl Factory for SyncHandle {
     type Item = Handle;
 
     fn ty() -> &'static str {
-        "synchronous"
+        "sync"
     }
 
     fn from(cfg: &Config, registry: &Registry) -> Result<Box<Handle>, Box<::std::error::Error>> {

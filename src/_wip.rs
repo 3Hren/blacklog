@@ -107,36 +107,11 @@ impl Drop for Inner {
     }
 }
 
-#[derive(Clone)]
-pub struct AsyncLogger {
-    tx: mpsc::Sender<Event>,
-    inner: Arc<Inner>,
-}
-
 impl AsyncLogger {
-    pub fn new() -> AsyncLogger {
-        let (tx, rx) = mpsc::channel();
-
-        AsyncLogger {
-            tx: tx.clone(),
-            inner: Arc::new(Inner::new(tx, rx)),
-        }
-    }
-
     fn scoped<F: FnOnce() -> &'static str>(&self, f: F) -> Scope<F> {
         Scope {
             logger: self as &Logger,
             f: f,
-        }
-    }
-}
-
-impl Logger for AsyncLogger {
-    fn log<'a>(&self, record: &Record<'a>) {
-        if record.severity() >= self.inner.severity.load(Ordering::Relaxed) {
-            if let Err(..) = self.tx.send(Event::Record(RecordBuf::from(record.activate()))) {
-                // TODO: Return error.
-            }
         }
     }
 }

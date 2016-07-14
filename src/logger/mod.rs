@@ -87,14 +87,18 @@ impl<L: Logger> Logger for FilteredLoggerWrapper<L> {
 /// feature gives an ability to implement popular SIGHUP logging rotation.
 #[derive(Clone)]
 pub struct SyncLogger {
-    handlers: Arc<Vec<Box<Handle>>>,
+    handlers: Arc<Mutex<Arc<Vec<Box<Handle>>>>>,
 }
 
 impl SyncLogger {
     pub fn new(handlers: Vec<Box<Handle>>) -> SyncLogger {
         SyncLogger {
-            handlers: Arc::new(handlers),
+            handlers: Arc::new(Mutex::new(Arc::new(handlers))),
         }
+    }
+
+    pub fn reset(&self, handlers: Vec<Box<Handle>>) {
+        *self.handlers.lock().unwrap() = Arc::new(handlers);
     }
 }
 
@@ -103,7 +107,8 @@ impl Logger for SyncLogger {
         // TODO: Maybe check whether a record was activated before.
         rec.activate(args);
 
-        for handle in self.handlers.iter() {
+        let handlers = self.handlers.lock().unwrap();
+        for handle in handlers.iter() {
             handle.handle(rec).unwrap();
         }
     }
@@ -113,7 +118,7 @@ impl Factory for SyncLogger {
     type Item = Logger;
 
     fn ty() -> &'static str {
-        "synchronous"
+        "sync"
     }
 
     fn from(cfg: &Config, registry: &Registry) -> Result<Box<Logger>, Box<::std::error::Error>> {
