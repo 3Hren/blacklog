@@ -13,13 +13,13 @@ use severity::Severity;
 /// Logging event context contains an information about where the event was created including the
 /// source code location and thread id.
 #[derive(Debug, Copy, Clone)]
-pub struct Context {
+struct Context {
     /// The line number on which the logging event was created.
-    pub line: u32,
+    line: u32,
     /// The module path where the logging event was created.
-    pub module: &'static str,
+    module: &'static str,
     /// The thread id where the logging event was created.
-    pub thread: usize,
+    thread: usize,
 }
 
 // TODO: Zero-copy optimization, but only for cases without placeholders. Don't know how to do it
@@ -90,10 +90,6 @@ impl<'a> Record<'a> {
         self.timestamp.unwrap_or_else(|| {
             DateTime::from_utc(NaiveDateTime::from_timestamp(0, 0), UTC)
         })
-    }
-
-    pub fn context(&self) -> &Context {
-        &self.context
     }
 
     pub fn line(&self) -> u32 {
