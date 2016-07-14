@@ -1,4 +1,5 @@
 # Planning for 0.2.0
+- [x] Severity as a Trait.
 - [ ] Layouts.
   - [ ] Pattern.
     - [x] Proof of concept.
@@ -8,7 +9,7 @@
     - [x] Precision for meta.
     - [x] Hex, Bin, Debug, etc. types for meta placeholders.
     - [ ] Optional meta.
-    - [ ] Module, line, thread placeholders.
+    - [ ] Module, line, process and thread placeholders.
   - [ ] JSON.
 - [ ] Outputs
   - [ ] Null.
@@ -16,6 +17,8 @@
   - [ ] File (with routing).
   - [ ] TCP.
   - [ ] UDP.  
+- [ ] Handles.
+  - [ ] Pretty colored handle.
 - [ ] Filters.
   - [ ] Whatever.
   - [ ] Severity.
@@ -23,12 +26,13 @@
   - [ ] Composite.
 - [ ] Loggers.
   - [ ] Sync.
+    - [ ] Reset at runtime.
   - [ ] Async logger.
     - [x] Proof of concept.
     - [ ] Finish.
+    - [ ] Reset at runtime.
   - [ ] Runtime severity threshold change.
-  - [ ] Runtime filter change.
-  - [ ] Reset at runtime.
+  - [x] Runtime filter change (adaptor).  
 - [ ] Macro or compiler-plugin.
   - [x] Proof of concept.
   - [ ] Compiler plugin.
@@ -40,10 +44,9 @@
 - [ ] Stable Rust support.
   - [ ] Replace rust-peg with something compilable on stable.
   - [ ] Maybe we don't need serde-json?
-
-- [ ] Implement owned timestamp generator instead of interpretation.
-- [ ] Make token generator for pattern layout to act like lightweight pattern.
-- [ ] Severity as a Trait (?).
+- [ ] Performance tweaks.
+  - [ ] Implement owned timestamp generator instead of interpretation.
+  - [ ] Make token generator for pattern layout to act like lightweight pattern.  
 - [ ] Scoped logging (probably in conjunction with tracing sub-library).
 - [ ] Inflector (?).
 
