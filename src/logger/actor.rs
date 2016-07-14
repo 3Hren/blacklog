@@ -24,10 +24,11 @@ impl Inner {
             for event in rx {
                 match event {
                     Event::Record(rec) => {
-                        // let rec = Record::from_owned(rec);
-                        // println!("{:?}", rec);
-                        for handle in handlers.iter() {
-                        }
+                        rec.borrow_and(|rec| {
+                            for handle in handlers.iter() {
+                                handle.handle(rec).unwrap();
+                            }
+                        });
                     }
                     Event::Shutdown => break,
                 }

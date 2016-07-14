@@ -6,20 +6,20 @@ use chrono::naive::datetime::NaiveDateTime;
 
 use {MetaBuf, MetaLink};
 
-use meta::MetaLinkIter;
+use meta::{Meta, MetaLinkIter};
 use meta::format::Formatter;
 use severity::Severity;
 
 /// Logging event context contains an information about where the event was created including the
 /// source code location and thread id.
 #[derive(Debug, Copy, Clone)]
-struct Context {
+pub struct Context {
     /// The line number on which the logging event was created.
-    line: u32,
+    pub line: u32,
     /// The module path where the logging event was created.
-    module: &'static str,
+    pub module: &'static str,
     /// The thread id where the logging event was created.
-    thread: usize,
+    pub thread: usize,
 }
 
 // TODO: Zero-copy optimization, but only for cases without placeholders. Don't know how to do it
@@ -71,17 +71,6 @@ impl<'a> Record<'a> {
         }
     }
 
-    fn from_owned(rec: &'a RecordBuf, metalink: &'a MetaLink<'a>) -> Record<'a> {
-        Record {
-            sev: rec.sev,
-            sevfn: rec.sevfn,
-            message: rec.message.clone(),
-            timestamp: Some(rec.timestamp),
-            context: rec.context,
-            metalink: metalink,
-        }
-    }
-
     /// Returns a severity number as `i32` that was set during this record creation.
     pub fn severity(&self) -> i32 {
         self.sev
@@ -101,6 +90,10 @@ impl<'a> Record<'a> {
         self.timestamp.unwrap_or_else(|| {
             DateTime::from_utc(NaiveDateTime::from_timestamp(0, 0), UTC)
         })
+    }
+
+    pub fn context(&self) -> &Context {
+        &self.context
     }
 
     pub fn line(&self) -> u32 {
@@ -143,6 +136,24 @@ pub struct RecordBuf {
     meta: Vec<MetaBuf>,
 }
 
+impl RecordBuf {
+    pub fn borrow_and<F: Fn(&mut Record)>(&self, f: F) {
+        let meta = self.meta.iter().map(Into::into).collect::<Vec<Meta>>();
+        let metalink = MetaLink::new(&meta);
+
+        let mut rec = Record {
+            sev: self.sev,
+            sevfn: self.sevfn,
+            message: self.message.clone(),
+            timestamp: Some(self.timestamp),
+            context: self.context,
+            metalink: &metalink,
+        };
+
+        f(&mut rec)
+    }
+}
+
 impl<'a> From<&'a Record<'a>> for RecordBuf {
     fn from(val: &'a Record<'a>) -> RecordBuf {
         RecordBuf {
@@ -160,9 +171,6 @@ impl<'a> From<&'a Record<'a>> for RecordBuf {
 mod tests {
     use {Meta, MetaLink};
     use super::*;
-
-    // #[cfg(feature="benchmark")]
-    // use test::Bencher;
 
     #[test]
     fn severity() {
@@ -202,12 +210,16 @@ mod tests {
 
     #[test]
     fn to_owned() {
-        fn run(rec: &Record) {
-            let owned = RecordBuf::from(rec);
-            let meta = owned.meta.iter().map(Into::into).collect::<Vec<Meta>>();
-            let metalist = MetaLink::new(&meta);
-            let borrow = Record::from_owned(&owned, &metalist);
+        let v = 42;
+        let meta = &[Meta::new("n#1", &v), Meta::new("n#2", &v)];
+        let metalist = MetaLink::new(meta);
 
+        let mut rec = Record::new(1, 2, "mod", &metalist);
+        rec.activate(format_args!("message"));
+
+        let owned = RecordBuf::from(&rec);
+
+        owned.borrow_and(|borrow| {
             assert_eq!(1, borrow.severity());
             assert_eq!("message", borrow.message());
             assert_eq!(rec.datetime(), borrow.datetime());
@@ -218,14 +230,6 @@ mod tests {
             let mut iter = borrow.iter();
             assert_eq!("n#1", iter.next().unwrap().name);
             assert_eq!("n#2", iter.next().unwrap().name);
-        }
-
-        let v = 42;
-        let meta = &[Meta::new("n#1", &v), Meta::new("n#2", &v)];
-        let metalist = MetaLink::new(meta);
-
-        let mut rec = Record::new(1, 2, "mod", &metalist);
-        rec.activate(format_args!("message"));
-        run(&rec);
+        });
     }
 }
