@@ -87,7 +87,8 @@ impl<'a> Record<'a> {
         self.sev
     }
 
-    // TODO: Not sure about naming.
+    // TODO: Not sure about naming. Maybe better to return severity object with .num() and format()
+    //       methods.
     pub fn severity_format(&self) -> fn(i32, &mut Formatter) -> Result<(), ::std::io::Error> {
         self.sevfn
     }
@@ -194,7 +195,7 @@ mod tests {
         let meta1 = &[Meta::new("n#1", &v), Meta::new("n#2", &v)];
         let meta2 = &[Meta::new("n#3", &v), Meta::new("n#4", &v)];
         let metalink1 = MetaLink::new(meta1);
-        let metalink2 = MetaLink::with_head(meta2, &metalink1);
+        let metalink2 = MetaLink::with_link(meta2, &metalink1);
 
         run(&Record::new(0, 0, "", &metalink2));
     }

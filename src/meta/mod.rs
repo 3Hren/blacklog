@@ -71,7 +71,7 @@ impl<'a> MetaLink<'a> {
     }
 
     /// Constructs a new link of meta linked list, that is appended to the given one.
-    pub fn with_head(data: &'a [Meta<'a>], prev: &'a MetaLink<'a>) -> MetaLink<'a> {
+    pub fn with_link(data: &'a [Meta<'a>], prev: &'a MetaLink<'a>) -> MetaLink<'a> {
         MetaLink {
             id: 1 + prev.id,
             data: data,
@@ -96,7 +96,7 @@ impl<'a> MetaLink<'a> {
     ///     Meta::new("n#2", &val),
     ///     Meta::new("n#3", &val),
     /// ];
-    /// let metalink2 = MetaLink::with_head(&meta2, &metalink1);
+    /// let metalink2 = MetaLink::with_link(&meta2, &metalink1);
     ///
     /// let mut iter = metalink2.iter();
     ///
@@ -251,9 +251,9 @@ mod tests {
         let meta1 = [];
         let metalink1 = MetaLink::new(&meta1);
         let meta2 = [];
-        let metalink2 = MetaLink::with_head(&meta2, &metalink1);
+        let metalink2 = MetaLink::with_link(&meta2, &metalink1);
         let meta3 = [];
-        let metalink3 = MetaLink::with_head(&meta3, &metalink2);
+        let metalink3 = MetaLink::with_link(&meta3, &metalink2);
 
         let mut iter = LinkIter::new(&metalink3);
 
@@ -303,14 +303,14 @@ mod tests {
             Meta::new("n#3", &val),
             Meta::new("n#4", &val),
         ];
-        let metalink2 = MetaLink::with_head(&meta2, &metalink1);
+        let metalink2 = MetaLink::with_link(&meta2, &metalink1);
 
         let meta3 = [
             Meta::new("n#5", &val),
             Meta::new("n#6", &val),
             Meta::new("n#7", &val),
         ];
-        let metalink3 = MetaLink::with_head(&meta3, &metalink2);
+        let metalink3 = MetaLink::with_link(&meta3, &metalink2);
 
         let mut iter = metalink3.iter();
 
@@ -334,14 +334,14 @@ mod tests {
         let metalink1 = MetaLink::new(&meta1);
 
         let meta2 = [];
-        let metalink2 = MetaLink::with_head(&meta2, &metalink1);
+        let metalink2 = MetaLink::with_link(&meta2, &metalink1);
 
         let meta3 = [
             Meta::new("n#5", &val),
             Meta::new("n#6", &val),
             Meta::new("n#7", &val),
         ];
-        let metalink3 = MetaLink::with_head(&meta3, &metalink2);
+        let metalink3 = MetaLink::with_link(&meta3, &metalink2);
 
         let mut iter = metalink3.iter();
 
@@ -363,14 +363,14 @@ mod tests {
             Meta::new("n#1", &val),
             Meta::new("n#2", &val),
         ];
-        let metalink2 = MetaLink::with_head(&meta2, &metalink1);
+        let metalink2 = MetaLink::with_link(&meta2, &metalink1);
 
         let meta3 = [
             Meta::new("n#3", &val),
             Meta::new("n#4", &val),
             Meta::new("n#5", &val),
         ];
-        let metalink3 = MetaLink::with_head(&meta3, &metalink2);
+        let metalink3 = MetaLink::with_link(&meta3, &metalink2);
 
         let mut iter = metalink3.iter();
 
