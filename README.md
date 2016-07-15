@@ -76,3 +76,4 @@
 - [ ] Adaptors - async.
 - [ ] Integration with `log` crate.
 - [ ] Runtime logging reset (with SIGHUP).
+- [ ] Extending Blackhole.
