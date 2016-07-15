@@ -17,8 +17,8 @@ fn main() {
 
     // Attaching additional meta information.
     log!(logger, Info, "nginx/1.6 configured", {
-        elapsed: 42.15,
         config: "/etc/nginx/nginx.conf",
+        elapsed: 42.15,
     });
 
     log!(logger, Warn, "client stopped connection before send body completed", {
@@ -28,13 +28,11 @@ fn main() {
 
     // And both. You can even use functions as meta for lazy evaluations.
     log!(logger, Error, "file does not exist: {}", ["/var/www/favicon.ico"], {
-        method: "GET",
         path: "/",
-        host: "www.google.ru",
         cache: true,
-        accept: "*/*",
-        protocol: "HTTP",
+        method: "GET",
         version: 1.1,
+        protocol: "HTTP",
         fibonacci: FnMeta::new(|| {
             (0..40).fold((0, 1), |acc, _| (acc.1, acc.0 + acc.1)).0
         }),

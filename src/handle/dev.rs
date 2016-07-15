@@ -48,7 +48,7 @@ impl Handle for Dev {
             buf.write_all(b"\t")?;
             write!(buf, "\x1B[")?;
             write!(buf, "37m")?;
-            write!(buf, "{:<10.10}", meta.name)?;
+            write!(buf, "{}", meta.name)?;
             write!(buf, "\x1B[0m")?;
             buf.write_all(b": ")?;
             write!(buf, "\x1B[2;m")?;
