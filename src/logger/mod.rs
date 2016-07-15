@@ -4,16 +4,16 @@ use std::sync::{Arc, Mutex};
 
 use {Config, Registry};
 
-use filter::{Filter, FilterAction, NullFilter};
 use handle::Handle;
 use record::Record;
-
 use factory::Factory;
 
 pub use self::actor::ActorLogger;
 // pub use self::sync::SyncLogger;
+pub use self::filtered::{FilteredLoggerAdapter, SeverityFilteredLoggerAdapter};
 
 mod actor;
+mod filtered;
 mod sync;
 
 /// Loggers are, well, responsible for logging. Nuff said.
@@ -25,48 +25,6 @@ pub trait Logger: Send {
 impl<T: Logger + ?Sized> Logger for Box<T> {
     fn log<'a, 'b>(&self, rec: &mut Record<'a>, args: Arguments<'b>) {
         self.deref().log(rec, args)
-    }
-}
-
-// TODO: Implement.
-// A logger wrapper that wraps other logger and filters incoming events by fast severity check.
-// struct SeverityFilteredLoggerWrapper {}
-
-// TODO: Docs.
-/// # Note
-///
-/// The logger filter acts like a function to make filtering things common, but this may be
-/// significant performance overhead for denied events, because to obtain a filter we mush lock a
-/// mutex and copy a shared pointer containing the filter.
-pub struct FilteredLoggerWrapper<L> {
-    logger: L,
-    filter: Arc<Mutex<Arc<Box<Filter>>>>,
-}
-
-impl<L: Logger> FilteredLoggerWrapper<L> {
-    pub fn new(logger: L) -> FilteredLoggerWrapper<L> {
-        FilteredLoggerWrapper {
-            logger: logger,
-            filter: Arc::new(Mutex::new(Arc::new(box NullFilter))),
-        }
-    }
-
-    /// Replaces the current filter with the given one.
-    pub fn filter(&self, filter: Box<Filter>) {
-        *self.filter.lock().unwrap() = Arc::new(filter);
-    }
-}
-
-impl<L: Logger> Logger for FilteredLoggerWrapper<L> {
-    fn log<'a, 'b>(&self, rec: &mut Record<'a>, args: Arguments<'b>) {
-        let filter = self.filter.lock().unwrap().clone();
-
-        match filter.filter(&rec) {
-            FilterAction::Deny => {}
-            FilterAction::Accept | FilterAction::Neutral => {
-                self.logger.log(rec, args)
-            }
-        }
     }
 }
 
@@ -233,7 +191,7 @@ mod tests {
 
         let counter = Arc::new(AtomicUsize::new(0));
         let log = SyncLogger::new(vec![box MockHandle { counter: counter.clone() }]);
-        let log = FilteredLoggerWrapper::new(log);
+        let log = FilteredLoggerAdapter::new(log);
 
         log.filter(box |rec: &Record| {
             if rec.severity() >= 1 {
@@ -252,7 +210,7 @@ mod tests {
     #[test]
     fn log_filter_box() {
         fn create_wrapper(log: Box<Logger>) -> Box<Logger> {
-            box FilteredLoggerWrapper::new(log) as Box<Logger>
+            box FilteredLoggerAdapter::new(log) as Box<Logger>
         }
 
         let log = box SyncLogger::new(vec![]);
@@ -298,7 +256,7 @@ mod bench {
     #[bench]
     fn log_message_with_format_and_meta6_reject(b: &mut Bencher) {
         let log = SyncLogger::new(vec![]);
-        let log = FilteredLoggerWrapper::new(log);
+        let log = FilteredLoggerAdapter::new(log);
         log.filter(box |_rec: &Record| {
             FilterAction::Deny
         });
