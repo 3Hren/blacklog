@@ -9,7 +9,8 @@
     - [x] Precision for meta.
     - [x] Hex, Bin, Debug, etc. types for meta placeholders.
     - [ ] Optional meta.
-    - [ ] Module, line, process and thread placeholders.
+    - [x] Module and line placeholders.
+    - [ ] Process and thread placeholders.
   - [ ] JSON.
 - [ ] Outputs
   - [ ] Null.
@@ -18,14 +19,15 @@
   - [ ] TCP.
   - [ ] UDP.  
 - [ ] Handles.
-  - [ ] Pretty colored handle.
+  - [x] Pretty colored handle.
 - [ ] Filters.
   - [ ] Whatever.
   - [ ] Severity.
   - [ ] Burst.
   - [ ] Composite.
+  - [ ] By module prefix.
 - [ ] Loggers.
-  - [ ] Sync.
+  - [x] Sync.
     - [x] Reset at runtime.    
   - [ ] Async logger.
     - [x] Proof of concept.
