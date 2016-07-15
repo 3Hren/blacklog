@@ -21,12 +21,11 @@ pub enum SeverityType {
 //     String,
 // }
 
-// TODO: Uncomment.
-// #[derive(Debug, Copy, Clone, PartialEq)]
-// pub enum ProcessType {
-//     Num,
-//     String,
-// }
+#[derive(Debug, Copy, Clone, PartialEq)]
+pub enum ProcessType {
+    Id,
+    Name,
+}
 
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub enum Timezone {
@@ -87,7 +86,7 @@ pub enum Token<'a> {
     /// Thread id or its name depending on type specified.
     // Thread(Option<FormatSpec>, ThreadType),
     /// Process id (aka PID) or its name depending on type specified.
-    // Process(Option<FormatSpec>, ProcessType),
+    Process(Option<FormatSpec>, ProcessType),
     Meta(&'a str, Option<FormatSpec>),
     MetaList(Option<FormatSpec>),
 }
@@ -102,7 +101,7 @@ pub enum TokenBuf {
     Line(Option<FormatSpec>),
     Module(Option<FormatSpec>),
     // TODO: Thread(Option<FormatSpec>, ThreadType),
-    // TODO: Process(Option<FormatSpec>, ProcessType),
+    Process(Option<FormatSpec>, ProcessType),
     Meta(String, Option<FormatSpec>),
     MetaList(Option<FormatSpec>),
 }
@@ -117,6 +116,7 @@ impl<'a> From<Token<'a>> for TokenBuf {
             Token::TimestampNum(spec) => TokenBuf::TimestampNum(spec),
             Token::Line(spec) => TokenBuf::Line(spec),
             Token::Module(spec) => TokenBuf::Module(spec),
+            Token::Process(spec, ty) => TokenBuf::Process(spec, ty),
             Token::Meta(name, spec) => TokenBuf::Meta(name.into(), spec),
             Token::MetaList(spec) => TokenBuf::MetaList(spec),
         }
@@ -419,6 +419,27 @@ mod tests {
             width: 20,
         };
         assert_eq!(vec![Token::Module(Some(spec))], tokens);
+    }
+
+    #[test]
+    fn process() {
+        let tokens = parse("{process}").unwrap();
+
+        assert_eq!(vec![Token::Process(None, ProcessType::Id)], tokens);
+    }
+
+    #[test]
+    fn process_with_spec() {
+        let tokens = parse("{process:/^8d}").unwrap();
+
+        let spec = FormatSpec {
+            fill: '/',
+            align: Alignment::AlignCenter,
+            flags: 0,
+            precision: None,
+            width: 8,
+        };
+        assert_eq!(vec![Token::Process(Some(spec), ProcessType::Id)], tokens);
     }
 
     #[test]

@@ -2,6 +2,7 @@ use meta::format::Alignment;
 
 use super::{
     FormatSpec,
+    ProcessType,
     SeverityType,
     Timezone,
     Token,
@@ -95,6 +96,31 @@ format -> Token<'input>
 
         Token::Module(Some(spec))
     }
+    / "{" "process" "}" {
+        Token::Process(None, ProcessType::Id)
+    }
+    / "{" "process:" fill:fill? align:align? width:width? "d}" {
+        let spec = FormatSpec {
+            fill: fill.unwrap_or(' '),
+            align: align.unwrap_or(Alignment::AlignLeft),
+            flags: 0,
+            precision: None,
+            width: width.unwrap_or(0),
+        };
+
+        Token::Process(Some(spec), ProcessType::Id)
+    }
+    / "{" "process:" fill:fill? align:align? width:width? precision:precision? "}" {
+        let spec = FormatSpec {
+            fill: fill.unwrap_or(' '),
+            align: align.unwrap_or(Alignment::AlignLeft),
+            flags: 0,
+            precision: precision,
+            width: width.unwrap_or(0),
+        };
+
+        Token::Process(Some(spec), ProcessType::Name)
+    }
     / "{" "..." "}" { Token::MetaList(None) }
     / "{" name:name "}" { Token::Meta(name, None) }
     / "{" name:name ":" fill:fill? align:align? width:width? precision:precision? "}" {
@@ -121,6 +147,9 @@ precision -> usize
 sevty -> SeverityType
     = "d" { SeverityType::Num }
     / "s" { SeverityType::String }
+process_type -> ProcessType
+    = "d" { ProcessType::Id }
+    / "s" { ProcessType::Name }
 tz -> Timezone
     = "s" { Timezone::Utc }
     / "l" { Timezone::Local }

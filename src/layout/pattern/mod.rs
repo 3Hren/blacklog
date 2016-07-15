@@ -126,6 +126,12 @@ impl<F: SevMap> Layout for PatternLayout<F> {
                 TokenBuf::Module(Some(spec)) => {
                     rec.module().format(&mut Formatter::new(wr, spec.into()))?
                 }
+                TokenBuf::Process(None, _ty) => {
+                    unimplemented!();
+                }
+                TokenBuf::Process(Some(_spec), _ty) => {
+                    unimplemented!();
+                }
                 TokenBuf::Meta(ref name, None) => {
                     let meta = rec.iter().find(|meta| meta.name == name)
                         .ok_or(Error::MetaNotFound)?;
