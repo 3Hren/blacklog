@@ -4,7 +4,7 @@ extern crate log;
 use log::LogLevel::*;
 
 use blacklog::handle::Dev;
-use blacklog::Logger;
+use blacklog::{Logger, FnMeta};
 use blacklog::logger::SyncLogger;
 
 fn main() {
@@ -13,7 +13,6 @@ fn main() {
     let logger = SyncLogger::new(vec![Box::new(Dev)]);
 
     // Message formatting.
-    loop{
     log!(logger, Debug, "{} {} HTTP/1.1 {} {}", "GET", "/static/image.png", 404, 347);
 
     // Attaching additional meta information.
@@ -27,10 +26,17 @@ fn main() {
         port: 10053,
     });
 
-    // And both. You can even use functions as meta.
+    // And both. You can even use functions as meta for lazy evaluations.
     log!(logger, Error, "file does not exist: {}", ["/var/www/favicon.ico"], {
-        expires: -1,
-        content_type: "text/html",
+        method: "GET",
+        path: "/",
+        host: "www.google.ru",
+        cache: true,
+        accept: "*/*",
+        protocol: "HTTP",
+        version: 1.1,
+        fibonacci: FnMeta::new(|| {
+            (0..40).fold((0, 1), |acc, _| (acc.1, acc.0 + acc.1)).0
+        }),
     });
-}
 }

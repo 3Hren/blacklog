@@ -10,12 +10,10 @@ pub struct Dev;
 
 impl Handle for Dev {
     fn handle(&self, rec: &mut Record) -> Result<(), ::std::io::Error> {
-        // {timestamp} {severity:.1s} {process}/{process:d} - {message}\r\n{name}: {value}\r\n
-        // ^gray       ^vary          ^gray                   ^bright
         let mut buf = Vec::with_capacity(512);
 
         write!(buf, "\x1B[2;m")?;
-        write!(buf, "{}", rec.datetime().format("%+"))?;
+        write!(buf, "{}", rec.datetime().format("%Y-%m-%d %H:%M:%S%.6f"))?;
         write!(buf, "\x1B[0m")?;
 
         buf.write_all(b" ")?;
@@ -50,7 +48,7 @@ impl Handle for Dev {
             buf.write_all(b"\t")?;
             write!(buf, "\x1B[")?;
             write!(buf, "37m")?;
-            buf.write_all(meta.name.as_bytes())?;
+            write!(buf, "{:<10.10}", meta.name)?;
             write!(buf, "\x1B[0m")?;
             buf.write_all(b": ")?;
             write!(buf, "\x1B[2;m")?;
