@@ -8,7 +8,7 @@ extern crate serde_json;
 use std::env;
 use std::fs::File;
 
-use log::LogLevel;
+use log::LogLevel::*;
 
 use blacklog::Registry;
 
@@ -25,8 +25,8 @@ fn main() {
         .logger(&cfg)
         .expect("expect logger to be properly created");
 
-    log!(logger, LogLevel::Debug, "{} {} HTTP/1.1 {} {}", "GET", "/static/image.png", 404, 347);
-    log!(logger, LogLevel::Info, "nginx/1.6 configured");
-    log!(logger, LogLevel::Warn, "client stopped connection before send body completed");
-    log!(logger, LogLevel::Error, "file does not exist: {}", "/var/www/favicon.ico");
+    log!(logger, Debug, "{} {} HTTP/1.1 {} {}", "GET", "/static/image.png", 404, 347);
+    log!(logger, Info, "nginx/1.6 configured");
+    log!(logger, Warn, "client stopped connection before send body completed");
+    log!(logger, Error, "file does not exist: {}", "/var/www/favicon.ico");
 }
