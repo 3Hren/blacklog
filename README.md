@@ -74,7 +74,7 @@
 - [ ] From file (with log crate levels).
 - [ ] Manual logger creation.
 - [ ] Adaptors - fast severity filter.
-- [ ] Adaptors - custom filter.
+- [ ] Adaptors - custom filter (also show chains of filters).
 - [ ] Adaptors - async.
 - [ ] Integration with `log` crate.
 - [ ] Runtime logging reset (with SIGHUP).
