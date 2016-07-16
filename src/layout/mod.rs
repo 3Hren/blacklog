@@ -2,7 +2,7 @@ use std::io::Write;
 
 use record::Record;
 
-mod pattern;
+pub mod pattern;
 
 pub use self::pattern::PatternLayout;
 

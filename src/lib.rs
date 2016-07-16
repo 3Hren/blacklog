@@ -17,7 +17,7 @@ extern crate log;
 mod factory;
 pub mod filter;
 pub mod handle;
-mod layout;
+pub mod layout;
 pub mod logger;
 mod meta;
 mod output;

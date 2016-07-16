@@ -12,7 +12,8 @@ use super::{Error, Layout};
 
 mod grammar;
 
-use self::grammar::{parse, FormatSpec, ParseError, SeverityType, Timezone, TokenBuf};
+use self::grammar::{parse, FormatSpec, SeverityType, Timezone, TokenBuf};
+pub use self::grammar::ParseError;
 
 pub trait SevMap: Send + Sync {
     fn map(&self, rec: &Record, spec: FormatSpec, ty: SeverityType, wr: &mut Write) ->
