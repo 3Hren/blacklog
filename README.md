@@ -16,6 +16,9 @@
   - [ ] Null.
   - [ ] Term.
   - [ ] File (with routing).
+    - [x] Proof of concept.
+    - [ ] Deal with all unwraps.
+    - [ ] Implement flushing strategies.
   - [ ] TCP.
   - [ ] UDP.  
 - [ ] Handles.
