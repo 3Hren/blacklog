@@ -12,6 +12,7 @@ impl Handle for Dev {
     fn handle(&self, rec: &mut Record) -> Result<(), ::std::io::Error> {
         let mut buf = Vec::with_capacity(512);
 
+        // TODO: Use nearly liked terminal crate for coloring.
         write!(buf, "\x1B[2;m")?;
         write!(buf, "{}", rec.datetime().format("%Y-%m-%d %H:%M:%S%.6f"))?;
         write!(buf, "\x1B[0m")?;
