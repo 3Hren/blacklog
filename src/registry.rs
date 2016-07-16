@@ -8,7 +8,7 @@ use {Handle, Layout, Logger, Output};
 use factory::Factory;
 use layout::{PatternLayout};
 use logger::{SyncLogger};
-use output::{Term};
+use output::{FileOutput, Term};
 use handle::{SyncHandle};
 
 pub type Config = Value;
@@ -29,6 +29,7 @@ impl Registry {
 
         result.add_layout::<PatternLayout>();
 
+        result.add_output::<FileOutput>();
         result.add_output::<Term>();
 
         result.add_handle::<SyncHandle>();

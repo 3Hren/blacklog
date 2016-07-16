@@ -1,7 +1,9 @@
 use super::Record;
 
+mod file;
 mod term;
 
+pub use self::file::FileOutput;
 pub use self::term::Term;
 
 /// Outputs are responsible for delivering formatted log events to their destination.
