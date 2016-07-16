@@ -1,6 +1,7 @@
 use super::Record;
 
 mod file;
+mod null;
 mod term;
 
 pub use self::file::FileOutput;
