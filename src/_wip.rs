@@ -73,49 +73,6 @@ enum Event {
     Shutdown,
 }
 
-struct Inner {
-    severity: AtomicI32,
-    tx: Mutex<mpsc::Sender<Event>>,
-    thread: Option<JoinHandle<()>>,
-}
-
-impl Inner {
-    fn new(tx: mpsc::Sender<Event>, rx: mpsc::Receiver<Event>) -> Inner {
-        let thread = thread::spawn(move || {
-            for event in rx {
-                match event {
-                    Event::Record(rec) => {
-                        // println!("{:?}", rec);
-                    }
-                    Event::Shutdown => break,
-                }
-            }
-        });
-
-        Inner {
-            severity: AtomicI32::new(0),
-            tx: Mutex::new(tx),
-            thread: Some(thread),
-        }
-    }
-}
-
-impl Drop for Inner {
-    fn drop(&mut self) {
-        self.tx.lock().unwrap().send(Event::Shutdown).unwrap();
-        self.thread.take().unwrap().join().unwrap();
-    }
-}
-
-impl AsyncLogger {
-    fn scoped<F: FnOnce() -> &'static str>(&self, f: F) -> Scope<F> {
-        Scope {
-            logger: self as &Logger,
-            f: f,
-        }
-    }
-}
-
 struct Scope<'a, F: FnOnce() -> &'static str> {
     logger: &'a Logger,
     f: F,
@@ -134,33 +91,6 @@ mod tests {
 
     use FnMeta;
     use super::{SyncLogger, AsyncLogger, Logger};
-
-    #[cfg(feature="benchmark")]
-    use test::Bencher;
-
-    #[test]
-    fn log_with_custom_enum() {
-        enum Severity {
-            Debug,
-            Info,
-            Warn,
-            Error,
-        }
-
-        impl From<Severity> for i32 {
-            fn from(val: Severity) -> i32 {
-                match val {
-                    Severity::Debug => 0,
-                    Severity::Info  => 1,
-                    Severity::Warn  => 2,
-                    Severity::Error => 3,
-                }
-            }
-        }
-        let log = SyncLogger::new(vec![]);
-
-        log!(log, Severity::Debug, "file does not exist: /var/www/favicon.ico");
-    }
 
     #[cfg(feature="benchmark")]
     #[bench]

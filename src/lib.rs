@@ -36,5 +36,3 @@ pub use self::output::Output;
 pub use self::record::{Record};
 pub use self::registry::{Config, Registry};
 pub use self::severity::Severity;
-
-// mod _wip;
