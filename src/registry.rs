@@ -72,7 +72,7 @@ impl Registry {
     pub fn output(&self, cfg: &Config) -> Result<Box<Output>, Box<Error>> {
         let ty = Registry::ty(cfg)?;
         let func = self.outputs.get(ty)
-            .ok_or_else(|| format!("handle \"{}\" not found", ty))?;
+            .ok_or_else(|| format!("output \"{}\" not found", ty))?;
         func(cfg, self)
     }
 
