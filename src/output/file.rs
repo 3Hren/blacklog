@@ -22,6 +22,7 @@ use record::Record;
 /// multiple threads.
 pub struct FileOutput {
     pattern: PatternLayout,
+    // TODO: Replace `File` with `Writer` and add flushing policies.
     files: Mutex<HashMap<PathBuf, Arc<Mutex<File>>>>,
 }
 
