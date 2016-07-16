@@ -20,7 +20,7 @@ pub mod handle;
 pub mod layout;
 pub mod logger;
 mod meta;
-mod output;
+pub mod output;
 mod record;
 mod registry;
 mod severity;
