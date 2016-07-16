@@ -2,7 +2,7 @@ use std::collections::hash_map::Entry;
 use std::collections::HashMap;
 use std::error;
 use std::fs::{File, OpenOptions};
-use std::io::{Error, Write};
+use std::io::{BufWriter, Error, Write};
 use std::path::{Path, PathBuf};
 use std::str;
 use std::sync::{Arc, Mutex};
@@ -23,7 +23,7 @@ use record::Record;
 pub struct FileOutput {
     pattern: PatternLayout,
     // TODO: Replace `File` with `Writer` and add flushing policies.
-    files: Mutex<HashMap<PathBuf, Arc<Mutex<File>>>>,
+    files: Mutex<HashMap<PathBuf, Arc<Mutex<BufWriter<File>>>>>,
 }
 
 impl FileOutput {
@@ -55,7 +55,7 @@ impl Output for FileOutput {
                 Entry::Occupied(v) => v.get().clone(),
                 Entry::Vacant(v) => {
                     let file = OpenOptions::new().append(true).create(true).open(path)?;
-                    v.insert(Arc::new(Mutex::new(file))).clone()
+                    v.insert(Arc::new(Mutex::new(BufWriter::new(file)))).clone()
                 }
             }
         };
