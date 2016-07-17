@@ -18,6 +18,28 @@ fn sync_log(b: &mut Bencher) {
 }
 
 #[bench]
+fn sync_log_with_meta1(b: &mut Bencher) {
+    let log = SyncLogger::new(vec![]);
+
+    b.iter(|| {
+        log!(log, 0, "file does not exist: /var/www/favicon.ico", {
+            path1: "/home1",
+        });
+    });
+}
+
+#[bench]
+fn sync_log_with_format_and_meta1(b: &mut Bencher) {
+    let log = SyncLogger::new(vec![]);
+
+    b.iter(|| {
+        log!(log, 0, "file does not exist: {}", ["/var/www/favicon.ico"], {
+            path1: "/home1",
+        });
+    });
+}
+
+#[bench]
 fn sync_log_with_format_and_meta6(b: &mut Bencher) {
     let log = SyncLogger::new(vec![]);
 
