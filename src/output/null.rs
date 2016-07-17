@@ -1,5 +1,5 @@
 use std::error;
-use std::io::{Error, Write};
+use std::io::Error;
 
 use {Config, Output, Record, Registry};
 
@@ -28,5 +28,18 @@ impl Output for NullOutput {
     #[allow(unused_variables)]
     fn write(&self, rec: &Record, message: &[u8]) -> Result<(), Error> {
         Ok(())
+    }
+}
+
+impl Factory for NullOutput {
+    type Item = Output;
+
+    fn ty() -> &'static str {
+        "null"
+    }
+
+    #[allow(unused_variables)]
+    fn from(cfg: &Config, registry: &Registry) -> Result<Box<Output>, Box<error::Error>> {
+        Ok(box NullOutput)
     }
 }
