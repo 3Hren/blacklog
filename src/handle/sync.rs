@@ -12,7 +12,7 @@ pub struct SyncHandle {
 
 impl Handle for SyncHandle {
     fn handle(&self, rec: &mut Record) -> Result<(), ::std::io::Error> {
-        let mut wr: Vec<u8> = Vec::new();
+        let mut wr = Vec::new();
         self.layout.format(rec, &mut wr).unwrap();
 
         for output in &self.outputs {
@@ -34,9 +34,9 @@ impl Factory for SyncHandle {
         let layout = registry.layout(cfg.find("layout").unwrap())?;
 
         let outputs = cfg.find("outputs")
-            .expect("section \"outputs\" is required") // TODO: Drop expect.
+            .ok_or("section \"outputs\" is required")?
             .as_array()
-            .expect("section \"outputs\" must be an array")
+            .ok_or("section \"outputs\" must be an array")?
             .iter()
             .map(|o| registry.output(o))
             .collect()?;
