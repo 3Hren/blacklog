@@ -51,6 +51,20 @@ fn sevfn<T: Severity>(sev: i32, format: &mut Formatter) -> Result<(), ::std::io:
     T::format(sev, format)
 }
 
+#[macro_export]
+macro_rules! record (
+    ($sev:expr, {$($name:ident: $val:expr,)*}) => {
+        $crate::Record::new($sev, line!(), module_path!(),
+            &$crate::MetaLink::new(&[
+                $($crate::Meta::new(stringify!($name), &$val)),*
+            ])
+        )
+    };
+    ($sev:expr) => {{
+        record!($sev, {})
+    }};
+);
+
 impl<'a> Record<'a> {
     pub fn new<T>(sev: T, line: u32, module: &'static str, metalink: &'a MetaLink<'a>) -> Record<'a>
         where T: Severity + 'static

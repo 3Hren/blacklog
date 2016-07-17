@@ -13,7 +13,9 @@ keywords = ["blackhole", "blacklog", "log", "logger", "logging"]
 license = "MIT"
 
 [dependencies]
-# Pattern Layout grammar parsing.
+# Pattern Layout grammar parsing. When it's time to go stable, I'll drop this
+# dependency and will generate grammar files manually instead, until a
+# convenient parser library with meaningful error handling comes.
 peg = "0.3"
 # Reduces error enum creation boilerplate.
 quick-error = "1.1"

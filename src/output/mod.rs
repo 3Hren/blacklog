@@ -5,6 +5,7 @@ mod null;
 mod term;
 
 pub use self::file::FileOutput;
+pub use self::null::NullOutput;
 pub use self::term::Term;
 
 /// Outputs are responsible for delivering formatted log events to their destination.
