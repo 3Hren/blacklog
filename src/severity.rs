@@ -27,11 +27,11 @@ impl Severity for i32 {
 impl Severity for LogLevel {
     fn as_i32(&self) -> i32 {
         match *self {
-            LogLevel::Error => 1,
-            LogLevel::Warn  => 2,
-            LogLevel::Info  => 3,
-            LogLevel::Debug => 4,
-            LogLevel::Trace => 5,
+            LogLevel::Error => 4,
+            LogLevel::Warn  => 3,
+            LogLevel::Info  => 2,
+            LogLevel::Debug => 1,
+            LogLevel::Trace => 0,
         }
     }
 
@@ -39,11 +39,11 @@ impl Severity for LogLevel {
         where Self: Sized
     {
         match val {
-            1 => format.write_str("Error"),
-            2 => format.write_str("Warn"),
-            3 => format.write_str("Info"),
-            4 => format.write_str("Debug"),
-            5 => format.write_str("Trace"),
+            4 => format.write_str("Error"),
+            3 => format.write_str("Warn"),
+            2 => format.write_str("Info"),
+            1 => format.write_str("Debug"),
+            0 => format.write_str("Trace"),
             val => val.format(format),
         }
     }
