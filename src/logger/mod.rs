@@ -17,7 +17,7 @@ pub trait Logger: Send {
     fn log<'a, 'b>(&self, rec: &mut Record<'a>, args: Arguments<'b>);
 }
 
-impl<T: Logger + ?Sized> Logger for Box<T> {
+impl<T: Logger + ?Sized, U: Deref<Target=T> + Send> Logger for U {
     fn log<'a, 'b>(&self, rec: &mut Record<'a>, args: Arguments<'b>) {
         self.deref().log(rec, args)
     }
