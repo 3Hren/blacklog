@@ -6,15 +6,7 @@ pub mod pattern;
 
 pub use self::pattern::PatternLayout;
 
-quick_error! {
-    #[derive(Debug)]
-    pub enum Error {
-        Io(err: ::std::io::Error) {
-            from()
-        }
-        MetaNotFound {} // TODO: What meta?
-    }
-}
+pub type Error = ::std::io::Error;
 
 /// Layouts are responsible for formatting a log event into a form that meets the needs of whatever
 /// will be consuming the log event.

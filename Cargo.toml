@@ -17,8 +17,6 @@ license = "MIT"
 # dependency and will generate grammar files manually instead, until a
 # convenient parser library with meaningful error handling comes.
 peg = "0.3"
-# Reduces error enum creation boilerplate.
-quick-error = "1.1"
 # Datetime formatting.
 chrono = "0.2"
 # Configuration from generic source.

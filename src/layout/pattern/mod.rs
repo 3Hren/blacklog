@@ -1,5 +1,5 @@
 use std::error;
-use std::io::Write;
+use std::io::{ErrorKind, Write};
 
 use chrono::Timelike;
 use chrono::offset::local::Local;
@@ -135,13 +135,13 @@ impl<F: SevMap> Layout for PatternLayout<F> {
                 }
                 TokenBuf::Meta(ref name, None) => {
                     let meta = rec.iter().find(|meta| meta.name == name)
-                        .ok_or(Error::MetaNotFound)?;
+                        .ok_or(Error::new(ErrorKind::Other, "meta not found"))?;
 
                     meta.value.format(&mut Formatter::new(wr, Default::default()))?;
                 }
                 TokenBuf::Meta(ref name, Some(spec)) => {
                     let meta = rec.iter().find(|meta| meta.name == name)
-                        .ok_or(Error::MetaNotFound)?;
+                        .ok_or(Error::new(ErrorKind::Other, "meta not found"))?;
 
                     meta.value.format(&mut Formatter::new(wr, spec.into()))?;
                 }
