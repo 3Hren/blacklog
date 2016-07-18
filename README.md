@@ -70,6 +70,7 @@
 - [ ] Default Log Crate integration (example).
 - [ ] Rate filter (example and use-case).
 - [ ] Filters aware (example how to implement hierarchical logger).
+- [ ] Invert formatter -> output?
 
 # Tutorial
 - [ ] Hello - just init sync logger with pretty terminal output and log some (with log crate levels).
