@@ -22,6 +22,17 @@ struct Context {
     thread: usize,
 }
 
+impl Context {
+    #[inline]
+    fn new(line: u32, module: &'static str) -> Self {
+        Context {
+            line: line,
+            module: module,
+            thread: super::thread::id(),
+        }
+    }
+}
+
 // TODO: Zero-copy optimization, but only for cases without placeholders. Don't know how to do it
 // without compiler plugin for now. Or... with explicit macro syntax rules.
 // #[derive(Copy, Clone)]
@@ -69,18 +80,12 @@ impl<'a> Record<'a> {
     pub fn new<T>(sev: T, line: u32, module: &'static str, metalink: &'a MetaLink<'a>) -> Record<'a>
         where T: Severity + 'static
     {
-        let context = Context {
-            line: line,
-            module: module,
-            thread: super::thread::id(),
-        };
-
         Record {
             sev: sev.as_i32(),
             sevfn: sevfn::<T>,
             message: Cow::Borrowed(""),
             timestamp: None,
-            context: context,
+            context: Context::new(line, module),
             metalink: metalink,
         }
     }
