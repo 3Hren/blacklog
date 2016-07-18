@@ -13,7 +13,11 @@ mod sync;
 
 /// Loggers are, well, responsible for logging. Nuff said.
 pub trait Logger: Send {
-    // TODO: Return a result, which can be ignored (without #[must_use]).
+    /// Logs the given event using provided record and formatting arguments.
+    ///
+    /// # Note
+    ///
+    /// Loggers can be combined into chains with various fitlering stages.
     fn log<'a, 'b>(&self, rec: &mut Record<'a>, args: Arguments<'b>);
 }
 
