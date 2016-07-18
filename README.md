@@ -20,7 +20,9 @@
     - [ ] Deal with all unwraps.
     - [ ] Implement flushing strategies.
   - [ ] TCP.
-  - [ ] UDP.  
+  - [ ] UDP.
+  - [ ] Syslog.
+  - [ ] NT.
 - [ ] Handles.
   - [x] Pretty colored handle.
 - [ ] Filters.
@@ -38,6 +40,7 @@
     - [ ] Reset at runtime.
   - [ ] Runtime severity threshold change.
   - [x] Runtime filter change (adaptor).  
+  - [ ] Failover logging.
 - [ ] Macro or compiler-plugin.
   - [x] Proof of concept.
   - [ ] Compiler plugin.
@@ -56,8 +59,8 @@
 - [ ] Inflector (?).
 
 # Features
-- [ ] Fast in its category (prove with benchmarks with and without meta).
 - [ ] Structured (examples).
+- [ ] Fast in its category (prove with benchmarks with and without meta).
 - [ ] Thread-safe and clonable (example).
 - [ ] Asynchronous + synchronous (benchmarks).
 - [ ] Custom pattern layout (lot of examples).
